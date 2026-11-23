@@ -1,0 +1,36 @@
+{
+  "name": "park-map",
+  "version": "1.0.0",
+  "scripts": {
+    "build:map": "tsx scripts/build-map.ts",
+    "extract:genplan": "python scripts/genplan/extract.py",
+    "build:genplan": "tsx scripts/build-genplan.ts",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:demo": "vite build --mode demo",
+    "build:client": "vite build --mode client",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.114.0",
+    "@react-three/fiber": "^8.17.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@turf/turf": "^7.1.0",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^22.7.5",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.169.0",
+    "@vitejs/plugin-react": "^4.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vite-plugin-singlefile": "^2.0.3"
+  },
+  "type": "module",
+  "private": true
+}

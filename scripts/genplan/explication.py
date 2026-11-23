@@ -1,0 +1,95 @@
+"""Gen plan eksplikatsiyasi (PDF dagi jadval): raqam → (nomi, turi, kategoriya).
+
+Nomlar plandagidek, tarjimasiz. Turlar:
+  building   — bino (balandligi bilan chiziladi)
+  attraction — attraksion (hozircha quti; keyin Blender modeli bilan almashtiriladi)
+  playground — bolalar maydoni / labirint (yer sathida)
+  fountain   — fontan (hozircha past quti)
+  parking    — avtostoyanka
+  entrance   — kirish / darvoza
+Kategoriyalar src/map/config.ts → Category bilan bir xil.
+"""
+
+E = {
+    '1': ('Здание администрации парка', 'building', 'buildings'),
+    '2': ('Ресторан "Аристон-парк"', 'building', 'buildings'),
+    '3': ('Ресторан "Дар"', 'building', 'buildings'),
+    '4': ('Водопроводная насосная станция', 'building', None),
+    '5': ('Трансформаторная подстанция', 'building', None),
+    '6': ('Трансформаторная подстанция', 'building', None),
+    '7': ('Общественный туалет (промывной)', 'building', 'services'),
+    '8': ('Общественный туалет (промывной)', 'building', 'services'),
+    '9': ('Фонтан', 'fountain', 'fun'),
+    '10.1': ('Фонтан', 'fountain', 'fun'),
+    '10.2': ('Фонтан "Беседка"', 'fountain', 'fun'),
+    '11': ('Фонтан "Каскад"', 'fountain', 'fun'),
+    '12': ('Кафе на 10 мест', 'building', 'services'),
+    '13': ('Кафе "Замок эльфов"', 'building', 'services'),
+    '14': ('Тир', 'building', 'fun'),
+    '15': ('Кафе на 10 мест', 'building', 'services'),
+    '16': ('Домик "Шляпника"', 'building', 'services'),
+    '17': ('"Сладкий домик"', 'building', 'services'),
+    '18': ('Чoйхона', 'building', 'services'),
+    '19': ('"Пряничный домик"', 'building', 'services'),
+    '20': ('Кафе "Шоколадная фабрика"', 'building', 'services'),
+    '21': ('Аттракцион "Flying tigers 6"', 'attraction', 'fun'),
+    '22': ('Аттракцион "Mini tea cups"', 'attraction', 'fun'),
+    '23': ('Аттракцион "Magic bikes 6"', 'attraction', 'fun'),
+    '24': ('Аттракцион "Air race 2 seats"', 'attraction', 'fun'),
+    '25': ('Аттракцион "Slide M 350"', 'attraction', 'fun'),
+    '26': ('Аттракцион "Swing 12"', 'attraction', 'fun'),
+    '26.1': ('Аттракцион "Flying school"', 'attraction', 'fun'),
+    '27': ('Аттракцион "Windstarz"', 'attraction', 'fun'),
+    '28': ('Аттракцион "Водные гусеницы"', 'attraction', 'fun'),
+    '29': ('Аттракцион "Junior jet 6"', 'attraction', 'fun'),
+    '30': ('Детская площадка', 'playground', 'fun'),
+    '31': ('Аттракцион "Mini Crazy Mill"', 'attraction', 'fun'),
+    '32': ('Аттракциoн "Spining coaster"', 'attraction', 'fun'),
+    '33': ('Аттракцион "Gameland"', 'attraction', 'fun'),
+    '34': ('Аттракцион "Swing 20"', 'attraction', 'fun'),
+    '35': ('Аттракцион "Family swinger"', 'attraction', 'fun'),
+    '36': ('Аттракцион "Французская карусель"', 'attraction', 'fun'),
+    '37': ('Аттракцион "Mini jet 6" (Ground loading)', 'attraction', 'fun'),
+    '38': ('Аттракцион "Galleon 42"', 'attraction', 'fun'),
+    '39': ('Аттракцион "Speady coaster"', 'attraction', 'fun'),
+    '40': ('Аттракцион "Twist tower"', 'attraction', 'fun'),
+    '41': ('Аттракцион "Jumping star 6"', 'attraction', 'fun'),
+    '42': ('Аттракцион "Happy swing"', 'attraction', 'fun'),
+    '43': ('Аттракцион "Cyclon"', 'attraction', 'fun'),
+    '44': ('Аттракцион "Jump around"', 'attraction', 'fun'),
+    '45': ('Аттракцион "Автодром"', 'attraction', 'fun'),
+    '46': ('Аттракцион "Автодром"', 'attraction', 'fun'),
+    '47': ('Аттракцион "Колесо обозрения"', 'attraction', 'fun'),
+    '48': ('Здание фудкортов (2 эт.)', 'building', 'services'),
+    '49': ('Развлекательный центр', 'building', 'buildings'),
+    '50': ('Автостоянка на 367 машины', 'parking', 'parking'),
+    '51': ('Автостоянка на 60 машин', 'parking', 'parking'),
+    '52': ('Магазин сувениров', 'building', 'services'),
+    '53': ('Главный вход', 'entrance', 'entrance'),
+    '54': ('Аквапарк', 'building', 'fun'),
+    '55': ('Детский лабиринт', 'playground', 'fun'),
+    '56': ('Проходная', 'entrance', 'entrance'),
+    '57': ('Кафе "Алиса в стране чудес" c летней посадкой', 'building', 'services'),
+    '58': ('Кафе "Cладкий мир" c летней посадкой', 'building', 'services'),
+    '59': ('"Домик ведьмы" (магазин)', 'building', 'services'),
+    '60': ('"Домик хоббита"', 'building', 'services'),
+    '61': ('Шатер для проведения мероприятий', 'building', 'fun'),
+    '62': ('"Зеленый" театр', 'building', 'fun'),
+    '63': ('"Арка"-вход в зону "Музей"', 'entrance', 'fun'),
+    '64': ('Арт-объект "Колокольчик"', 'fountain', 'fun'),
+    '65': ('Кафе "Cafe de France"', 'building', 'services'),
+    '66': ('Французский домик', 'building', 'services'),
+    '67': ('Французский домик', 'building', 'services'),
+    '68.1': ('Французский домик', 'building', 'services'),
+    '68.2': ('Французский домик', 'building', 'services'),
+    '69.1': ('Французский домик', 'building', 'services'),
+    '69.2': ('Французский домик', 'building', 'services'),
+    '70': ('Французский домик', 'building', 'services'),
+    '71': ('Французский домик', 'building', 'services'),
+    '72': ('Торговый киоск "Choko"', 'building', 'services'),
+    '73': ('Веревочный городок', 'playground', 'fun'),
+}
+
+# Bino balandligi (m), qolganlari — HEIGHT_DEFAULT
+HEIGHT = {'1': 7, '2': 7, '3': 6, '48': 8, '49': 18, '54': 8, '65': 7, '13': 6, '61': 6}
+HEIGHT_DEFAULT = 3.5

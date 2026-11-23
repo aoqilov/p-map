@@ -1,0 +1,101 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "Massaj",
+    "note": "Balicha massaj (fotoga qarab): 1 qavat, tomida massaj chodirlari. Old tomoni (0-qirra) basseynlarga qaragan"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       69.299995214,
+       41.311224375
+      ],
+      [
+       69.2998014,
+       41.311295247
+      ],
+      [
+       69.299759758,
+       41.311230089
+      ],
+      [
+       69.299953572,
+       41.311159217
+      ],
+      [
+       69.299995214,
+       41.311224375
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "Plitka",
+    "note": "Massaj binosi atrofi: maysa o'rniga travertin plitka (basseyn plitkasiga qo'shiladi)"
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       69.29971962,
+       41.311233564
+      ],
+      [
+       69.299742343,
+       41.311264322
+      ],
+      [
+       69.299750715,
+       41.311276988
+      ],
+      [
+       69.299890642,
+       41.311480534
+      ],
+      [
+       69.300089171,
+       41.311466059
+      ],
+      [
+       69.300148969,
+       41.31123085
+      ],
+      [
+       69.300071232,
+       41.311204616
+      ],
+      [
+       69.300054488,
+       41.31119376
+      ],
+      [
+       69.299985123,
+       41.311099676
+      ],
+      [
+       69.299909777,
+       41.311113246
+      ],
+      [
+       69.299760282,
+       41.311181095
+      ],
+      [
+       69.29971962,
+       41.311233564
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

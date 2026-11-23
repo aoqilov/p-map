@@ -1,0 +1,7 @@
+{
+  "th": -0.0035110282200441593,
+  "tx": 2875.9566644628767,
+  "ty": 3500.6685213886803,
+  "mpp": 0.1247265651334951,
+  "note": "PDF pt -> park metres. mpp from 7 radius labels (1:500 plotted at 1/sqrt2); th,tx,ty fitted to old map roads and checked against Esri satellite (pools within ~1 m)."
+}

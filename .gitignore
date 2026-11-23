@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-demo/
+dist-client/
+*.blend1
+__pycache__/
+*.pyc
+.DS_Store
