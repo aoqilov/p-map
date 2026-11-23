@@ -2,16 +2,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { Edges, Html, Line } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import { bridgeGeometry, extrude, flat, multiToShapes, polyToShape, toWorld } from './geometry';
+import { bridgeGeometry, extrude, multiToShapes, polyToShape, toWorld } from './geometry';
 import type { XY } from './projection';
 import type { Palette } from './theme';
 import type { Area, Building, ParkData, Poi } from './types';
-import { BUILDING_LOOKS, CONSTRUCTION, PAVEMENT, type Category } from './config';
-import { StyledBuilding } from './styledBuilding';
-import { BanyaBuilding } from './banyaBuilding';
-import { MallBuilding } from './mallBuilding';
-import { MassageBuilding } from './massageBuilding';
-import { IslandBar } from './poolDecor';
+import { PAVEMENT, type Category } from './config';
+import { liveOf, shortLabel, statusLine } from '../api/live';
 import { curbGeometry, curbTexture, stoneTexture } from './pavement';
 import { attractionRadius } from './attractions';
 import { waterLevelAt, waterLevelUnder } from './water';
@@ -53,9 +49,8 @@ interface Selectable {
 
 const ROAD_TOP = 0.12; // asfalt sathi
 
-export function Roads({ data, pal, showDraft }: { data: ParkData; pal: Palette; showDraft: boolean }) {
+export function Roads({ data, pal }: { data: ParkData; pal: Palette }) {
   const surface = useDisposable(() => extrude(multiToShapes(data.roads), ROAD_TOP), [data]);
-  const draft = useDisposable(() => flat(multiToShapes(data.roadsDraft)), [data]);
   const curb = useDisposable(
     () => curbGeometry(data.roads, { width: PAVEMENT.curbWidth, height: PAVEMENT.curbHeight, base: ROAD_TOP }),
     [data],
@@ -71,12 +66,6 @@ export function Roads({ data, pal, showDraft }: { data: ParkData; pal: Palette; 
       <mesh geometry={curb} receiveShadow>
         <meshStandardMaterial map={tex.curb} color={pal.curb} roughness={0.85} />
       </mesh>
-      {showDraft && (
-        <mesh geometry={draft} rotation={LIE_FLAT} position-y={0.13}>
-          <meshBasicMaterial color={pal.draft} transparent opacity={0.8} depthWrite={false}
-            polygonOffset polygonOffsetFactor={-2} />
-        </mesh>
-      )}
     </>
   );
 }
@@ -121,8 +110,7 @@ function Zone({ area, color, edge, depth, selected, pal, onSelect }: {
 export function Zones({ data, pal, selectedId, onSelect }: { data: ParkData; pal: Palette } & Selectable) {
   return (
     <>
-      {/* Ichki joylashuvi borlari (PARKING_LAYOUT) parkingLot.tsx da chiziladi */}
-      {data.parking.filter((a) => !data.parkingLayout?.[a.id]).map((a) => (
+      {data.parking.map((a) => (
         <Zone key={a.id} area={a} color={pal.parking} edge={pal.parkingEdge} depth={0.07} pal={pal}
           selected={a.id === selectedId} onSelect={onSelect} />
       ))}
@@ -149,32 +137,17 @@ function BuildingMesh({ b, pal, selected, onSelect, base }: {
   );
 }
 
-export function Buildings({ data, pal, selectedId, onSelect, night, future }: {
-  data: ParkData; pal: Palette; night: boolean;
-  /** Qurilayotgan binolardan tayyor holatda (loyiha) ko'rsatiladiganlari */
-  future?: string[];
-} & Selectable) {
+export function Buildings({ data, pal, selectedId, onSelect }: { data: ParkData; pal: Palette } & Selectable) {
+  // Suv ichidagi bino suv sathidan boshlanadi — ostida bo'shliq qolmaydi
   const bases = useMemo(() => data.buildings.map((b) => {
     const level = waterLevelUnder(b.poly, data.water);
     return level === null ? 0 : level - 0.1;
   }), [data]);
   return (
     <>
-      {data.buildings.map((b, i) => {
-        // Fotoga qarab qurilgan binolar (config.ts → BUILDING_LOOKS), qolganlari — oddiy quti
-        const look = BUILDING_LOOKS[b.id];
-        const common = { b, pal, selected: b.id === selectedId, onSelect };
-        if (!look) return <BuildingMesh key={b.id} {...common} base={bases[i]} />;
-        if (look.facade === 'bar') return <IslandBar key={b.id} {...common} night={night} />;
-        if (look.facade === 'massage') return <MassageBuilding key={b.id} {...common} look={look} night={night} />;
-        if (look.facade === 'mall') {
-          return <MallBuilding key={b.id} {...common} look={look} night={night}
-            construction={data.construction?.[b.id]} future={future?.includes(b.id)} />;
-        }
-        return look.facade === 'banya'
-          ? <BanyaBuilding key={b.id} {...common} look={look} night={night} />
-          : <StyledBuilding key={b.id} {...common} look={look} night={night} />;
-      })}
+      {data.buildings.map((b, i) => (
+        <BuildingMesh key={b.id} b={b} pal={pal} selected={b.id === selectedId} onSelect={onSelect} base={bases[i]} />
+      ))}
     </>
   );
 }
@@ -249,8 +222,6 @@ export function RouteLine({ points, data, pal }: { points: XY[]; data: ParkData;
   );
 }
 
-/** Qurilayotgan bino pini: minorali kran */
-const CRANE_ICON = 'M8 21V5M3 5h18M8 5l3-2.5M16 5v6M14.5 13.5a1.5 1.5 0 103 0V11M5 21h6';
 
 const ICONS: Record<Category, string> = {
   services: 'M12 5v14M5 12h14',
@@ -268,15 +239,30 @@ export function Pins({ pois, selectedId, onSelect, showLabels }: {
     <>
       {pois.map((p) => {
         const active = p.id === selectedId;
+        const live = liveOf(p.num);
         return (
           <Html key={p.id} position={toWorld(p.anchor, p.elevation + 1)} zIndexRange={active ? [60, 50] : [40, 0]}
             style={{ pointerEvents: 'none' }}>
-            <button type="button" className={`pin pin--${p.category}${CONSTRUCTION[p.id]?.display === 'site' ? ' pin--soon' : ''}${active ? ' is-active' : ''}`}
-              onClick={(e) => { e.stopPropagation(); onSelect(p.id); }} aria-label={p.label} aria-pressed={active}>
-              <span className="pin__head">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d={CONSTRUCTION[p.id]?.display === 'site' ? CRANE_ICON : ICONS[p.category]} /></svg>
+            <button type="button"
+              className={`pin pin--${p.category}${live ? ` pin--${live.status}` : ''}${active ? ' is-active' : ''}`}
+              onClick={(e) => { e.stopPropagation(); onSelect(p.id); }}
+              aria-label={live ? `${p.label}. ${statusLine(live)}` : p.label} aria-pressed={active}>
+              <span className="pin__body">
+                <span className="pin__icon">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d={ICONS[p.category]} /></svg>
+                </span>
+                {live && (
+                  <span className="pin__status" aria-hidden="true">
+                    {live.status === 'stopped' && <svg viewBox="0 0 10 10"><path d="M3.6 2.6v4.8M6.4 2.6v4.8" /></svg>}
+                  </span>
+                )}
               </span>
-              {(active || showLabels) && <span className="pin__label">{p.label}</span>}
+              {(active || showLabels) && (
+                <span className="pin__card">
+                  <strong>{shortLabel(p.label)}</strong>
+                  {live && <span className="pin__line"><i aria-hidden="true" />{statusLine(live)}</span>}
+                </span>
+              )}
             </button>
           </Html>
         );

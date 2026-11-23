@@ -2,7 +2,6 @@
   "name": "park-map",
   "version": "1.0.0",
   "scripts": {
-    "build:map": "tsx scripts/build-map.ts",
     "extract:genplan": "python scripts/genplan/extract.py",
     "build:genplan": "tsx scripts/build-genplan.ts",
     "dev": "vite",

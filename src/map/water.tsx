@@ -613,7 +613,7 @@ function swayMaterial(time: THREE.IUniform<number>) {
 }
 
 export function WaterPlants({ data, pal }: { data: ParkData; pal: Palette }) {
-  const { reeds, lilies } = data.plants;
+  const { reeds, lilies } = data.plants ?? { reeds: [], lilies: [] };
   const flowers = useMemo(() => lilies.filter((l) => l[4] > 0), [lilies]);
   const time = useMemo<THREE.IUniform<number>>(() => ({ value: 0 }), []);
   const geo = useMemo(() => ({ reed: reedClumpGeometry(), pad: lilyPadGeometry(), flower: lilyFlowerGeometry() }), []);

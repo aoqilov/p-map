@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import parkJson from './map/park.json';
 import { HOME_VIEW, ParkScene, TILT_PRESETS, type MapApi, type ViewInfo } from './map/ParkScene';
 import { createRouter } from './map/route';
-import { CATEGORY_LABEL, CONSTRUCTION, LOCATION, MENU_TABS, MODE_FEATURES, PINS, STREET_LAMP, WALK_SPEED, type MapFeatures, type MapMode, type MenuTab } from './map/config';
+import { CATEGORY_LABEL, LOCATION, MENU_TABS, MODE_FEATURES, PINS, STREET_LAMP, WALK_SPEED, type MapFeatures, type MapMode, type MenuTab } from './map/config';
 import { distToPoly } from './map/geo';
 import type { XY } from './map/projection';
 import type { ParkData, Poi } from './map/types';
@@ -103,13 +103,9 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
   const [showRoute, setShowRoute] = useState(false);
   const [showTrees, setShowTrees] = useState(true);
   const [lampsLit, setLampsLit] = useState(STREET_LAMP.lightsOn);
-  const [showDraft, setShowDraft] = useState(true);
-  const draftVisible = f.draftRoads && showDraft;
   const [follow, setFollow] = useState(false);
   const [toastHidden, setToastHidden] = useState(false);
   const [view, setView] = useState<ViewInfo>({ ...HOME_VIEW, rotated: false });
-  // Qurilayotgan bino: "2027" tanlanganda tayyor holatda (loyiha) ko'rsatiladi. Boshqa obyekt tanlansa yoki oyna yopilsa — "Hozir"
-  const [futureIds, setFutureIds] = useState<string[]>([]);
   const [hint, setHint] = useState(false);
   useEffect(() => {
     lockTelegramSwipes();
@@ -153,11 +149,10 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
   }, [hasMe]);
 
   const visiblePois = useMemo(
-    // Tepasida katta yil belgisi bor bino (CONSTRUCTION → display: 'finished') — pin o'rniga shu belgi turadi
     () => {
       const inTab = tab ? new Set(TAB_ITEMS[tab].map((p) => p.id)) : null;
-      return data.pois.filter((p) => CONSTRUCTION[p.id]?.display !== 'finished').filter((p) => p.id === selectedId || p.category === 'entrance' ||
-        (inTab ? inTab.has(p.id) : PINS.alwaysShow.includes(p.category) || (PINS.showConstruction && CONSTRUCTION[p.id]?.display === 'site')));
+      return data.pois.filter((p) => p.id === selectedId || p.category === 'entrance' ||
+        (inTab ? inTab.has(p.id) : PINS.alwaysShow.includes(p.category)));
     },
     [tab, selectedId],
   );
@@ -180,7 +175,6 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
 
   const select = useCallback((id: string | null) => {
     setSelectedId(id);
-    setFutureIds([]);
     setShowRoute(false);
     if (id) setFollow(false);
   }, []);
@@ -264,12 +258,10 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
           route={showRoute && route ? route.points : null}
           showTrees={showTrees}
           lampsLit={lampsLit}
-          showDraft={draftVisible}
           insets={{ top: topH + 8, bottom: bottomH + 8, right: TOOLS_INSET }}
           user={me}
           onUserInteract={() => setFollow(false)}
           onViewChange={setView}
-          future={futureIds}
         />
       </div>
 
@@ -303,7 +295,7 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
                   <li key={p.id}>
                     <button type="button" onClick={() => pickResult(p)}>
                       <span>{p.label}</span>
-                      <small>{CONSTRUCTION[p.id] ? `Qurilmoqda · ${CONSTRUCTION[p.id].opens}` : CATEGORY_LABEL[p.category]}</small>
+                      <small>{CATEGORY_LABEL[p.category]}</small>
                     </button>
                   </li>
                 ))}
@@ -412,7 +404,6 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
             <div className="sheet__head">
               <div>
                 <span className={`chip chip--${selected.category}`}>{CATEGORY_LABEL[selected.category]}</span>
-                {CONSTRUCTION[selected.id] && <span className="chip chip--soon">Qurilmoqda</span>}
                 <h2>{selected.label}</h2>
                 {(selected.hours || selected.info) && (
                   <p className="sheet__info">{[selected.hours && `Ish vaqti: ${selected.hours}`, selected.info].filter(Boolean).join(' · ')}</p>
@@ -422,31 +413,6 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
                 <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
               </button>
             </div>
-
-            {CONSTRUCTION[selected.id]?.display === 'finished' && (
-              <div className="soon">
-                <p>Bino qurilmoqda, {CONSTRUCTION[selected.id].opens}-yilda ochilishi rejalashtirilgan. Xaritada tayyor holati ko'rsatilgan.</p>
-              </div>
-            )}
-            {CONSTRUCTION[selected.id]?.display === 'site' && (() => {
-              const opens = CONSTRUCTION[selected.id].opens, on = futureIds.includes(selected.id);
-              return (
-                <div className="soon">
-                  <p>Bino qurilmoqda, {opens}-yilda ochilishi rejalashtirilgan. Hozir xaritada qurilish maydoni ko'rsatilgan.</p>
-                  <div className="seg" role="radiogroup" aria-label="Ko'rinish">
-                    <button type="button" role="radio" aria-checked={!on} className={!on ? 'is-on' : ''}
-                      onClick={() => setFutureIds([])}>Hozir</button>
-                    <button type="button" role="radio" aria-checked={on} className={on ? 'is-on' : ''}
-                      onClick={() => {
-                        setFutureIds([selected.id]);
-                        // Tayyor binoni butunligicha ko'rsatamiz
-                        const b = data.buildings.find((x) => x.id === selected.id);
-                        if (b) map.current?.fitTo(b.poly[0]);
-                      }}>{opens}</button>
-                  </div>
-                </div>
-              );
-            })()}
 
             <div className="trip">
               <label className="trip__from" htmlFor="from">
@@ -506,12 +472,6 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
                   </ul>
                 )}
               </section>
-            )}
-            {f.draftRoads && data.roadsDraft.length > 0 && (
-              <button type="button" className={`legend${showDraft ? ' is-on' : ''}`} onClick={() => setShowDraft((v) => !v)}
-                aria-pressed={showDraft}>
-                <i aria-hidden="true" /> Taxminiy yo'llar — tekshirish kerak
-              </button>
             )}
           </>
         )}

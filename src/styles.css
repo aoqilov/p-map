@@ -13,6 +13,9 @@
   --entrance: #0f8f6b;
   --parking: #475569;
   --kassa: #c2410c;
+  --st-open: #16a34a;
+  --st-stopped: #f59e0b;
+  --st-closed: #94a3b8;
   --shadow: 0 6px 22px rgba(20, 40, 80, 0.13);
   --pin-shadow: rgba(20, 40, 80, 0.35);
   --shadow-sm: 0 1px 4px rgba(20, 40, 80, 0.12);
@@ -39,6 +42,9 @@
     --entrance: #34d399;
     --parking: #94a3b8;
     --kassa: #fb923c;
+    --st-open: #22c55e;
+    --st-stopped: #fbbf24;
+    --st-closed: #64748b;
     --shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
     --pin-shadow: rgba(0, 0, 0, 0.6);
     --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.4);
@@ -60,6 +66,9 @@
   --entrance: #34d399;
   --parking: #94a3b8;
   --kassa: #fb923c;
+  --st-open: #22c55e;
+  --st-stopped: #fbbf24;
+  --st-closed: #64748b;
   --shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
   --pin-shadow: rgba(0, 0, 0, 0.6);
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.4);
@@ -341,44 +350,6 @@ svg { display: block; }
 }
 .bottom > * { pointer-events: auto; }
 
-.filters { display: grid; gap: 8px; justify-items: start; }
-.chips {
-  display: flex;
-  gap: 6px;
-  max-width: calc(100% + 16px);
-  margin: -8px;
-  padding: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.chips::-webkit-scrollbar { display: none; }
-.chip-btn {
-  flex: none;
-  padding: 8px 14px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-weight: 500;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-}
-.chip-btn.is-on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-
-.legend {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 12px;
-  color: var(--muted);
-  cursor: pointer;
-}
-.legend i { width: 18px; height: 6px; border-radius: 3px; background: var(--highlight); }
-.legend:not(.is-on) i { background: none; outline: 1.5px dashed var(--highlight); }
-
 .sheet {
   display: grid;
   gap: 14px;
@@ -410,38 +381,8 @@ svg { display: block; }
 }
 .chip--entrance { color: var(--entrance); }
 .chip--kassa { color: var(--kassa); }
-.chip--soon { margin-left: 6px; background: #fdf3c8; color: #8a5a00; }
 
-/* Qurilayotgan bino: izoh va "Hozir / 2027" almashtirgichi */
-.soon { display: grid; gap: 10px; }
-.soon p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
-.seg {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  padding: 3px;
-  background: var(--surface-2);
-  border-radius: 12px;
-}
-.seg button {
-  padding: 8px 10px;
-  color: var(--muted);
-  font: 600 13px/1 var(--font-ui);
-  background: none;
-  border: 0;
-  border-radius: 9px;
-  cursor: pointer;
-}
-.seg button.is-on { color: var(--fg); background: var(--surface); box-shadow: 0 1px 4px rgba(15, 27, 45, 0.12); }
-.future-tag {
-  padding: 5px 10px;
-  color: #3b2a00;
-  font: 600 12px/1.2 var(--font-ui);
-  white-space: nowrap;
-  background: #fde68a;
-  border-radius: 999px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
-}
+
 .chip--parking { color: var(--parking); }
 
 .icon-btn {
@@ -482,8 +423,11 @@ svg { display: block; }
 }
 .primary:disabled { background: var(--surface-2); color: var(--muted); cursor: default; }
 
-/* ---------- Pinlar (drei Html) ---------- */
+/* ---------- Pinlar (drei Html) ----------
+   Oq kartochka + bo'lim rangidagi doira (belgi) + pastki dum. Status (attraksion): o'ng yuqori burchakdagi nuqta.
+   Tanlanganda — kattalashadi, ustida nomi va status qatori. */
 .pin {
+  --pin-c: var(--accent);
   display: flex;
   flex-direction: column-reverse;
   align-items: center;
@@ -491,60 +435,144 @@ svg { display: block; }
   padding: 0;
   background: none;
   border: 0;
+  color: var(--fg);
   cursor: pointer;
   pointer-events: auto;
   transform: translate(-50%, -100%);
+  -webkit-tap-highlight-color: transparent;
 }
-.pin__head {
+.pin--parking { --pin-c: var(--parking); }
+.pin--entrance { --pin-c: var(--entrance); }
+.pin--kassa { --pin-c: var(--kassa); }
+
+.pin__body {
+  position: relative;
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  background: var(--accent);
-  border: 2px solid var(--surface);
-  border-radius: 50% 50% 50% 0;
-  box-shadow: 0 3px 8px var(--pin-shadow);
-  transform: rotate(-45deg);
-  transition: transform 0.18s ease, background-color 0.18s ease;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 7px; /* dum uchun joy */
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px var(--pin-shadow);
+  transform-origin: 50% calc(100% + 7px);
+  transition: transform 0.18s ease;
 }
-.pin__head svg {
+/* Dum: kartochka ostidagi kichik uchburchak — pin aynan obyekt ustini ko'rsatadi */
+.pin__body::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: var(--surface);
+  border-radius: 0 0 3px 0;
+  transform: translateX(-50%) rotate(45deg);
+  box-shadow: 3px 3px 5px -2px var(--pin-shadow);
+  z-index: -1;
+}
+.pin__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: var(--pin-c);
+  border-radius: 9px;
+  transition: background-color 0.18s ease;
+}
+.pin__icon svg {
   width: 15px;
   height: 15px;
   fill: none;
-  stroke: var(--accent-ink);
+  stroke: #fff;
   stroke-width: 2.3;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transform: rotate(45deg);
 }
-.pin--parking .pin__head { background: var(--parking); }
-.pin--entrance .pin__head { background: var(--entrance); }
-.pin--kassa .pin__head { background: var(--kassa); }
-.pin--soon .pin__head { background: #334155; }
-.pin--soon .pin__head svg { stroke: #facc15; }
-.pin.is-active .pin__head { background: var(--highlight); transform: rotate(-45deg) scale(1.2); }
-.pin.is-active .pin__head svg { stroke: var(--highlight-ink); }
-.pin__label {
-  padding: 4px 9px;
+
+/* Status nuqtasi */
+.pin__status {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  background: var(--st-c);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+}
+.pin__status svg { width: 9px; height: 9px; fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; }
+.pin--open { --st-c: var(--st-open); }
+.pin--stopped { --st-c: var(--st-stopped); }
+.pin--closed { --st-c: var(--st-closed); }
+/* Ochiq: nuqta atrofida sekin pulslovchi halqa */
+.pin--open .pin__status::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--st-open);
+  animation: pin-pulse 2.2s ease-out infinite;
+}
+@keyframes pin-pulse {
+  from { transform: scale(1); opacity: 0.7; }
+  to { transform: scale(2.2); opacity: 0; }
+}
+/* Yopiq: pin xiraroq, belgisi kulrang */
+.pin--closed .pin__icon { background: var(--st-closed); }
+.pin--closed:not(.is-active) .pin__body { opacity: 0.85; }
+
+/* Tanlangan */
+.pin.is-active .pin__body { transform: scale(1.18); }
+.pin.is-active .pin__icon { background: var(--highlight); }
+.pin.is-active .pin__icon svg { stroke: var(--highlight-ink); }
+
+/* Nomi va status qatori */
+.pin__card {
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  max-width: 200px;
+  padding: 7px 11px;
   background: var(--surface);
-  color: var(--fg);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
+  border-radius: 12px;
   box-shadow: var(--shadow);
+  text-align: left;
 }
+.pin__card strong {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pin__line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.pin__line i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--st-c); transform: translateY(-1px); }
 
 @media (max-width: 420px) {
   .brand__text { display: none; }
-  .pin__head { width: 26px; height: 26px; }
-  .pin__head svg { width: 13px; height: 13px; }
-  .stat { padding: 7px 10px; }
-  .stat dd { font-size: 15px; }
+  .pin__body { width: 32px; height: 32px; border-radius: 11px; }
+  .pin__icon { width: 25px; height: 25px; border-radius: 8px; }
+  .pin__icon svg { width: 13px; height: 13px; }
+  
+  
 }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
+  .pin--open .pin__status::after { animation: none; display: none; }
 }
 
 /* ---------- Joylashuv ---------- */

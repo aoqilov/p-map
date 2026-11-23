@@ -4,25 +4,13 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Bridges, Buildings, Ground, Pins, Roads, RouteLine, Trees, Zones } from './layers';
 import { Water, WaterPlants } from './water';
 import { Fish } from './fish';
-import { KidsPlayground, PoolDeck, Poolside } from './poolDecor';
-import { ParkingLots } from './parkingLot';
-import { PlaygroundEquipment } from './playgroundEquipment';
-import { ConstructionVehicles, HorseCarousel, JeepRide } from './playgroundRides';
-import { Fountain } from './Fountain';
-import { DamFountain } from './DamFountain';
-import { SwanStatue } from './SwanStatue';
 import { Attractions, attractionTop } from './attractions';
 import { UserMarker } from './UserMarker';
 import { StreetLamps } from './StreetLamps';
 import { FlowerBeds, Fountains } from './EntranceFountain';
 import type { UserFix } from './useUserLocation';
 import { PALETTE, useThemeName } from './theme';
-import { BUILDING_LOOKS, CONSTRUCTION, RENDER } from './config';
-import { styledTop } from './styledBuilding';
-import { banyaTop } from './banyaBuilding';
-import { mallTop } from './mallBuilding';
-import { massageTop } from './massageBuilding';
-import { siteTop } from './constructionSite';
+import { RENDER } from './config';
 import { toWorld } from './geometry';
 import { MapGestures, applyView, groundAt, type Limits, type View } from './mapGestures';
 import type { XY } from './projection';
@@ -101,7 +89,6 @@ export interface ParkSceneProps {
   onSelect: (id: string | null) => void;
   route: XY[] | null;
   showTrees: boolean;
-  showDraft: boolean;
   insets: Insets;
   /** Fonus chiroqlari yoqilganmi (default: config.ts → STREET_LAMP.lightsOn) */
   lampsLit?: boolean;
@@ -111,8 +98,6 @@ export interface ParkSceneProps {
   onUserInteract?: () => void;
   /** Burilish/qiyalik o'zgardi (kompas va qiyalik tugmasi uchun) */
   onViewChange?: (v: ViewInfo) => void;
-  /** Qurilayotgan binolardan tayyor holatda (loyiha) ko'rsatiladiganlari (config.ts → CONSTRUCTION) */
-  future?: string[];
 }
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -427,7 +412,7 @@ function DevExpose() {
 }
 
 export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(props, ref) {
-  const { data, pois, selectedId, onSelect, route, showTrees, showDraft, insets, user, onUserInteract, onViewChange, future, lampsLit = true } = props;
+  const { data, pois, selectedId, onSelect, route, showTrees, insets, user, onUserInteract, onViewChange, lampsLit = true } = props;
   const insetsRef = useRef(insets);
   insetsRef.current = insets;
   const theme = useThemeName();
@@ -437,19 +422,8 @@ export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(p
   // Attraksion pini modelning haqiqiy tepasida turadi (sinf chegarasida emas)
   const pinPois = useMemo(() => pois.map((p) => {
     const a = data.attractions.find((x) => x.id === p.id);
-    if (a) return { ...p, elevation: attractionTop(a) + 1 };
-    // Fotoga qarab qurilgan bino: pin tom tizmasi ustida
-    const look = BUILDING_LOOKS[p.id], b = look && data.buildings.find((x) => x.id === p.id);
-    if (!look || !b) return p;
-    if (look.facade === 'bar') return { ...p, elevation: 5.2 };
-    if (look.facade === 'massage') return { ...p, elevation: massageTop() };
-    if (look.facade === 'mall') {
-      const site = CONSTRUCTION[p.id];
-      if (site?.display === 'finished') return { ...p, elevation: mallTop(look, true) };
-      return { ...p, elevation: site && data.construction?.[p.id] && !future?.includes(p.id) ? siteTop(site.floorsBuilt) : mallTop(look) };
-    }
-    return { ...p, elevation: look.facade === 'banya' ? banyaTop(look) : styledTop(b, look) };
-  }), [pois, data, future]);
+    return a ? { ...p, elevation: attractionTop(a) + 1 } : p;
+  }), [pois, data]);
   const mid = toWorld([(data.bounds.minX + data.bounds.maxX) / 2, (data.bounds.minY + data.bounds.maxY) / 2]);
 
   return (
@@ -477,30 +451,14 @@ export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(p
 
       <Ground data={data} pal={pal} />
       <Zones data={data} pal={pal} selectedId={selectedId} onSelect={select} />
-      <ParkingLots data={data} pal={pal} night={theme === 'dark'} selectedId={selectedId} onSelect={select} />
-      <PoolDeck data={data} pal={pal} />
       <Water data={data} pal={pal} selectedId={selectedId} onSelect={select} night={theme === 'dark'} lampsLit={lampsLit} />
       <WaterPlants data={data} pal={pal} />
       <Fish data={data} pal={pal} />
-      <Poolside data={data} pal={pal} />
-      {/* Eski xaritaga qo'lda joylangan bezaklar — gen plan xaritasida ularning koordinatalari to'g'ri kelmaydi */}
-      {data.source !== 'genplan' && (
-        <>
-          <KidsPlayground data={data} />
-          <PlaygroundEquipment />
-          <JeepRide />
-          <HorseCarousel />
-          <ConstructionVehicles />
-          <Fountain />
-          <DamFountain />
-          <SwanStatue />
-        </>
-      )}
-      <Roads data={data} pal={pal} showDraft={showDraft} />
+      <Roads data={data} pal={pal} />
       <FlowerBeds data={data} pal={pal} />
       <Fountains data={data} />
       <Bridges data={data} pal={pal} />
-      <Buildings data={data} pal={pal} selectedId={selectedId} onSelect={select} night={theme === 'dark'} future={future} />
+      <Buildings data={data} pal={pal} selectedId={selectedId} onSelect={select} />
       <Attractions items={data.attractions} pal={pal} selectedId={selectedId} onSelect={select} />
       {showTrees && <Trees data={data} pal={pal} />}
       <StreetLamps data={data} night={theme === 'dark'} lit={lampsLit} />

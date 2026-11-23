@@ -2,73 +2,36 @@ import { Suspense, useEffect, useMemo, type ComponentType } from 'react';
 import * as THREE from 'three';
 import { Edges } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import { AIR_RACE, ATTRACTION_SIZES } from './config';
-import { Carousel, CAROUSEL_NATURAL } from './Carousel';
-import { Coaster, COASTER_NATURAL } from './Coaster';
-import { DropTower, DROP_TOWER_NATURAL } from './DropTower';
-import { FerrisWheel, FERRIS_WHEEL_NATURAL } from './FerrisWheel';
-import { Galleon, GALLEON_NATURAL } from './Galleon';
+import { ATTRACTIONS } from '../attractions';
+import type { AttractionDef } from '../attractions/define';
 import { extrude, polyToShape, toWorld } from './geometry';
+import { gltfModel } from './GltfModel';
 import type { Palette } from './theme';
 import type { Attraction } from './types';
-import { gltfModel } from './GltfModel';
-import airRaceUrl from './models/air_race.glb?url';
 
 export interface ModelProps {
   pal: Palette;
   selected: boolean;
 }
 
-interface ModelEntry {
-  component: ComponentType<ModelProps>;
-  /** Model qurilgan tabiiy o'lcham (metr): balandligi va eng keng tomoni */
-  natural: { height: number; footprint: number };
-  /** Model haqiqiy o'lchamda (Blender, metr) — o'lcham sinfiga cho'zilmaydi, masshtab 1 */
-  realSize?: boolean;
-  /** Xaritadagi o'lcham, metr (config.ts dan, har chizishda o'qiladi): eni va balandligi alohida o'zgaradi */
-  size?: { width: number; height: number };
-}
-
-/**
- * Kalit: gen plan raqami ('#21', '#26.1') yoki eski GeoJSON `name`. Yangi attraksion (masalan, Blender modeli):
- * model komponentini yozing va shu yerga `'#<raqam>': { component, natural }` qilib qo'shing — quti o'rniga model chiqadi.
- * Har bir model lokal (0,0,0) markazda quriladi, old tomoni lokal +Z ga qaraydi.
- */
-export const ATTRACTION_MODELS: Record<string, ModelEntry> = {
-  Charxpalak: { component: FerrisWheel, natural: FERRIS_WHEEL_NATURAL },
-  Karusel: { component: Carousel, natural: CAROUSEL_NATURAL },
-  Erkin_tushish: { component: DropTower, natural: DROP_TOWER_NATURAL },
-  Amerikan_tepaligi: { component: Coaster, natural: COASTER_NATURAL },
-  Galleon: { component: Galleon, natural: GALLEON_NATURAL },
-  Cars: { component: () => null, natural: { height: 1, footprint: 1 } },
-  Merry_go_round: { component: () => null, natural: { height: 1, footprint: 1 } },
-  Excavator: { component: () => null, natural: { height: 1, footprint: 1 } },
-  Aqua_Lady_Birds: { component: () => null, natural: { height: 1, footprint: 1 } },
-
-  // ---- Blender modellari (blender/*.py → src/map/models/*.glb), gen plan raqami bilan ----
-  '#24': { component: gltfModel({ url: airRaceUrl, anim: AIR_RACE }), natural: { height: 6.0, footprint: 9.7 }, realSize: true, size: AIR_RACE.size },
+/** Modeli bor attraksion sozlamasi (src/attractions/<raqam>-<nom>/config.ts). Yo'q bo'lsa — plandagi quti */
+const defFor = (item: Pick<Attraction, 'num'>): (AttractionDef & { model: NonNullable<AttractionDef['model']> }) | undefined => {
+  const d = item.num ? ATTRACTIONS[item.num] : undefined;
+  return d?.model ? (d as AttractionDef & { model: NonNullable<AttractionDef['model']> }) : undefined;
 };
 
-/**
- * Attraksion modeli: avval gen plan raqami bo'yicha ('#47' — Колесо обозрения), keyin nomi bo'yicha (eski xarita).
- * Topilmasa — plandagi maydoncha shaklidagi quti (AttractionBox).
- */
-export const modelFor = (item: Pick<Attraction, 'name' | 'num'>): ModelEntry | undefined =>
-  (item.num ? ATTRACTION_MODELS[`#${item.num}`] : undefined) ?? ATTRACTION_MODELS[item.name];
+/** .glb komponentlari: har bir model uchun bir marta yasaladi */
+const components = new Map<string, ComponentType<ModelProps>>();
+const componentFor = (d: AttractionDef & { model: NonNullable<AttractionDef['model']> }) => {
+  let c = components.get(d.model.url);
+  if (!c) components.set(d.model.url, (c = gltfModel({ url: d.model.url, anim: d.anim })));
+  return c;
+};
 
-/** Model o'z proporsiyasini saqlab, o'lcham sinfining "qutisi"ga sig'diriladigan masshtab */
-/** Masshtab: [gorizontal, tik]. `size` berilgan bo'lsa — shu o'lchamga, aks holda bir xil (fitScale) */
-export function modelScale(entry: ModelEntry, item: Pick<Attraction, 'size' | 'height'>): [number, number] {
-  if (entry.size) return [entry.size.width / entry.natural.footprint, entry.size.height / entry.natural.height];
-  const s = fitScale(entry, item);
-  return [s, s];
-}
-
-export function fitScale(entry: ModelEntry, item: Pick<Attraction, 'size' | 'height'>) {
-  if (entry.realSize) return 1;
-  const box = ATTRACTION_SIZES[item.size];
-  const maxHeight = item.height ?? box.height; // GeoJSON'dagi `height` sinf balandligini almashtiradi
-  return Math.min(maxHeight / entry.natural.height, box.footprint / entry.natural.footprint);
+/** Masshtab [gorizontal, tik]: `size` berilgan bo'lsa — shu o'lchamga, aks holda asl o'lcham (1) */
+function modelScale(d: AttractionDef & { model: NonNullable<AttractionDef['model']> }): [number, number] {
+  if (!d.size) return [1, 1];
+  return [d.size.width / d.model.natural.width, d.size.height / d.model.natural.height];
 }
 
 /**
@@ -80,16 +43,16 @@ export const boxHeight = (item: Pick<Attraction, 'size' | 'height'>) => item.hei
 
 /** Attraksion egallagan doira radiusi, metr (daraxtlarni olib tashlash uchun) */
 export function attractionRadius(item: Attraction) {
-  const entry = modelFor(item);
-  if (entry) return (entry.natural.footprint / 2) * modelScale(entry, item)[0];
+  const d = defFor(item);
+  if (d) return (d.size?.width ?? d.model.natural.width) / 2;
   if (!item.footprint) return 0;
   return Math.max(...item.footprint[0].map(([x, y]) => Math.hypot(x - item.at[0], y - item.at[1])));
 }
 
 /** Attraksionning xaritadagi haqiqiy balandligi (kamera sig'dirish uchun) */
 export function attractionTop(item: Attraction) {
-  const entry = modelFor(item);
-  if (entry) return entry.natural.height * modelScale(entry, item)[1];
+  const d = defFor(item);
+  if (d) return d.size?.height ?? d.model.natural.height;
   return item.footprint ? boxHeight(item) : 0;
 }
 
@@ -104,7 +67,7 @@ function AttractionPad({ item, pal }: { item: Attraction; pal: Palette }) {
   );
 }
 
-/** Vaqtinchalik quti: Blender modeli ATTRACTION_MODELS ga qo'shilguncha */
+/** Vaqtinchalik quti: attraksion papkasiga model.glb qo'shilguncha */
 function AttractionBox({ item, pal, selected, onSelect }: {
   item: Attraction; pal: Palette; selected: boolean; onSelect: (id: string) => void;
 }) {
@@ -123,9 +86,9 @@ function AttractionBox({ item, pal, selected, onSelect }: {
 function AttractionView({ item, pal, selected, onSelect }: {
   item: Attraction; pal: Palette; selected: boolean; onSelect: (id: string) => void;
 }) {
-  const entry = modelFor(item);
-  if (!entry) return item.footprint ? <AttractionBox item={item} pal={pal} selected={selected} onSelect={onSelect} /> : null;
-  const Model = entry.component;
+  const d = defFor(item);
+  if (!d) return item.footprint ? <AttractionBox item={item} pal={pal} selected={selected} onSelect={onSelect} /> : null;
+  const Model = componentFor(d);
   // bearing: old tomon yo'nalishi (shimoldan soat strelkasi bo'yicha). Lokal +Z → ma'lumotdagi (sin b, cos b)
   const yaw = Math.PI - THREE.MathUtils.degToRad(item.bearing);
   const click = (e: ThreeEvent<MouseEvent>) => {
@@ -133,7 +96,7 @@ function AttractionView({ item, pal, selected, onSelect }: {
     e.stopPropagation();
     onSelect(item.id);
   };
-  const [sx, sy] = modelScale(entry, item);
+  const [sx, sy] = modelScale(d);
   // .glb yuklanguncha — plandagi quti ko'rinib turadi
   const fallback = item.footprint ? <AttractionBox item={item} pal={pal} selected={selected} onSelect={onSelect} /> : null;
   return (

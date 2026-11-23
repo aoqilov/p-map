@@ -355,17 +355,13 @@ console.log(`✓ Fontanlar: ${fountains.length}, gulzorlar: ${beds.length}`);
 // ---------- Natija ----------
 const roadKm = edges.reduce((s, e) => s + e[2], 0) / 1000;
 const data: ParkData = {
-  source: 'genplan',
   bounds,
   ground,
   groundCut,
   water: waterAreas,
   roads,
-  roadsDraft: [],
   bridges,
   parking,
-  construction: {},
-  parkingLayout: {},
   playgrounds,
   buildings,
   attractions,
@@ -373,10 +369,6 @@ const data: ParkData = {
   lamps,
   fountains,
   beds,
-  deck: [],
-  poolside: { umbrellas: [], loungers: [], sails: [] },
-  poolFx: {},
-  plants: { reeds: [], lilies: [] },
   graph: { nodes, edges },
   pois,
   stats: {

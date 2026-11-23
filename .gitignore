@@ -6,3 +6,4 @@ dist-client/
 __pycache__/
 *.pyc
 .DS_Store
+src/attractions/*/preview*.png

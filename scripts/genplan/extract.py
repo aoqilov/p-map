@@ -9,7 +9,7 @@ Ishga tushirish (Python 3.11+, pypdfium2, shapely, numpy):
 3. Yo'l/maydon yuzasi = chegara − (maysa, suv, bino, attraksion, maydoncha, parking).
 4. Raqamli yozuvlar eksplikatsiya (explication.py) bilan bog'lanadi → obyektlar.
 5. Marshrut uchun yo'l markaz chiziqlari (medial o'q) quriladi.
-6. Planda faqat ingichka chiziq bilan chizilgan mavjud binolar, ariq va ko'priklar eski data/map.geojson dan olinadi.
+6. Planda faqat ingichka chiziq bilan chizilgan mavjud binolar, ariq va ko'priklar — data/genplan/existing.geojson dan.
 
 Koordinatalarni bog'lash: scripts/genplan/georef.json (PDF pt → metr).
 """
@@ -68,7 +68,8 @@ def main():
     sys.stdout.reconfigure(encoding="utf-8")
     G = load_georef()
     fills, strokes, texts, _ = read_pdf()
-    old = json.loads((ROOT / 'data' / 'map.geojson').read_text(encoding='utf8'))
+    # Planda faqat ingichka chiziq bilan chizilgan mavjud obyektlar (sputnikdan chizilgan): binolar, Salor kanali, ko'priklar
+    old = json.loads((ROOT / 'data' / 'genplan' / 'existing.geojson').read_text(encoding='utf8'))
     old_m = [(f['properties']['name'], lonlat_to_m(shape(f['geometry']))) for f in old['features']]
 
     # ---------- 1. Rangli shakllar (metrda) ----------
@@ -225,9 +226,9 @@ def main():
         for p in kinds[k]:
             add(p, layer=k, source='plan')
     for g in ariq:
-        add(g, layer='water', name='Канал Салар', source='old-map')
+        add(g, layer='water', name='Канал Салар', source='existing')
     for g in kopriks:
-        add(g, layer='bridge', source='old-map')
+        add(g, layer='bridge', source='existing')
     obj_fps = {id(o['fp']) for o in objects + unnamed if o['fp'] is not None}
     for k in ('building', 'attraction', 'playground'):
         for p in kinds[k]:
@@ -242,7 +243,7 @@ def main():
             if o:
                 o['fp'] = g
                 continue
-        add(g, layer='building', name=name, height=OLD_HEIGHT.get(name, HEIGHT_DEFAULT), source='old-map')
+        add(g, layer='building', name=name, height=OLD_HEIGHT.get(name, HEIGHT_DEFAULT), source='existing')
     for num, g in parking:
         o = next(o for o in objects if o['num'] == num)
         o['fp'] = g
