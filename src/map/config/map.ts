@@ -85,6 +85,7 @@ export const WATER = {
     Basseyn: "pool",
     Basseyn_Kv: "pool",
     Basseyn_D: "pool",
+    Aqua: "canal", // suv attraksionlari kanali (WATER_RIDES) — chuqur, oqimli
   } as Record<string, WaterStyle>,
   /** Ariq oqimi: tezlik (m/s) va yo'nalish (false — shimoliy uchidan janubga, true — teskari) */
   canalFlow: { speed: 0.55, reverse: false },
@@ -165,3 +166,28 @@ export const LOCATION = {
 
 /** Piyoda tezligi, m/s — marshrut vaqtini hisoblash uchun */
 export const WALK_SPEED = 1.2;
+
+/**
+ * Suv attraksionlari: plandagi maydoncha ichida yer ostiga chuqurlashtirilgan halqa kanal, o'rtada daraxtli orol,
+ * kanalda qayiqchalar aylanib yuradi. Kalit — gen plan raqami. O'lchamlar metrda:
+ * rim — chetdagi tosh yo'lak, channel — kanal eni, boats — qayiqlar soni. O'zgartirsangiz: npm run build:genplan
+ */
+export const WATER_RIDES: Record<string, { rim: number; channel: number; boats: number }> = {
+  '28': { rim: 1.2, channel: 3.4, boats: 6 }, // Водные гусеницы (Aqua Lady Birds)
+};
+
+/**
+ * Maydoncha yoki attraksion atrofidagi panjara (ограждение), plandagi shakl cheti bo'ylab. Kalit — gen plan raqami. Kirishlar avtomatik: maydonchaga kelib
+ * tugaydigan yo'l uchlari (chegaradan `gateReach` m ichida) — shu joyda `gateWidth` m ochiq qoladi.
+ * `skip` — shu raqamli obyekt bilan umumiy chegarada panjara qo'yilmaydi (u yerda boshqa obyektning panjarasi bor).
+ */
+export const FENCES: Record<string, {
+  height: number; gateWidth: number; gateReach: number; skip?: string[];
+  /** Rang kaliti (theme.ts): 'fence' — to'q yashil, 'fenceYellow' — sariq */
+  color?: 'fence' | 'fenceYellow';
+  /** Qo'shimcha kirishlar, park metrlari [x, y] (masalan, bekat zinasi qarshisida) — chegaradagi eng yaqin nuqtada ochiladi */
+  gates?: [number, number][];
+}> = {
+  '30': { height: 1.0, gateWidth: 2.4, gateReach: 5, skip: ['28'] }, // Детская площадка
+  '32': { height: 1.1, gateWidth: 2.2, gateReach: 6, color: 'fenceYellow', gates: [[56.0, 86.5]] }, // 3 Loops Coaster — zina qarshisida kirish
+};

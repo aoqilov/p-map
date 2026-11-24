@@ -6,6 +6,7 @@ import { ATTRACTIONS } from '../attractions';
 import type { AttractionDef } from '../attractions/define';
 import { extrude, polyToShape, toWorld } from './geometry';
 import { gltfModel } from './GltfModel';
+import { WaterRide } from './WaterRide';
 import type { Palette } from './theme';
 import type { Attraction } from './types';
 
@@ -28,6 +29,18 @@ const componentFor = (d: AttractionDef & { model: NonNullable<AttractionDef['mod
   return c;
 };
 
+/** Maydoncha markazi (yuza bo'yicha og'irlik markazi) — model shu yerga qo'yiladi; maydoncha yo'q bo'lsa pin nuqtasi */
+function centerOf(item: Attraction): [number, number] {
+  const ring = item.footprint?.[0];
+  if (!ring || ring.length < 4) return item.at;
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0; i < ring.length - 1; i++) {
+    const f = ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+    a += f; cx += (ring[i][0] + ring[i + 1][0]) * f; cy += (ring[i][1] + ring[i + 1][1]) * f;
+  }
+  return Math.abs(a) < 1e-6 ? item.at : [cx / (3 * a), cy / (3 * a)];
+}
+
 /** Masshtab [gorizontal, tik]: `size` berilgan bo'lsa — shu o'lchamga, aks holda asl o'lcham (1) */
 function modelScale(d: AttractionDef & { model: NonNullable<AttractionDef['model']> }): [number, number] {
   if (!d.size) return [1, 1];
@@ -43,6 +56,7 @@ export const boxHeight = (item: Pick<Attraction, 'size' | 'height'>) => item.hei
 
 /** Attraksion egallagan doira radiusi, metr (daraxtlarni olib tashlash uchun) */
 export function attractionRadius(item: Attraction) {
+  if (item.ride) return 0; // suv attraksioni: atrofdagi daraxtlarni o'chirmaymiz (maydoncha chetida panjara)
   const d = defFor(item);
   if (d) return (d.size?.width ?? d.model.natural.width) / 2;
   if (!item.footprint) return 0;
@@ -51,6 +65,7 @@ export function attractionRadius(item: Attraction) {
 
 /** Attraksionning xaritadagi haqiqiy balandligi (kamera sig'dirish uchun) */
 export function attractionTop(item: Attraction) {
+  if (item.ride) return 4.5; // orol daraxtlari
   const d = defFor(item);
   if (d) return d.size?.height ?? d.model.natural.height;
   return item.footprint ? boxHeight(item) : 0;
@@ -86,11 +101,12 @@ function AttractionBox({ item, pal, selected, onSelect }: {
 function AttractionView({ item, pal, selected, onSelect }: {
   item: Attraction; pal: Palette; selected: boolean; onSelect: (id: string) => void;
 }) {
+  if (item.ride) return <WaterRide item={item} selected={selected} onSelect={onSelect} />;
   const d = defFor(item);
   if (!d) return item.footprint ? <AttractionBox item={item} pal={pal} selected={selected} onSelect={onSelect} /> : null;
   const Model = componentFor(d);
   // bearing: old tomon yo'nalishi (shimoldan soat strelkasi bo'yicha). Lokal +Z → ma'lumotdagi (sin b, cos b)
-  const yaw = Math.PI - THREE.MathUtils.degToRad(item.bearing);
+  const yaw = Math.PI - THREE.MathUtils.degToRad(d.bearing ?? item.bearing);
   const click = (e: ThreeEvent<MouseEvent>) => {
     if (e.delta >= 6) return; // sudrash paytida tanlab qo'ymaslik uchun
     e.stopPropagation();
@@ -102,7 +118,7 @@ function AttractionView({ item, pal, selected, onSelect }: {
   return (
     <Suspense fallback={fallback}>
       {item.footprint && <AttractionPad item={item} pal={pal} />}
-      <group position={toWorld(item.at)} rotation-y={yaw} scale={[sx, sy, sx]} onClick={click}>
+      <group position={toWorld(centerOf(item))} rotation-y={yaw} scale={[sx, sy, sx]} onClick={click}>
         <Model pal={pal} selected={selected} />
       </group>
     </Suspense>

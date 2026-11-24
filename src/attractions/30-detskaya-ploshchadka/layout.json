@@ -1,0 +1,131 @@
+{
+ "note": "x, y — park metrlari (x sharq, y shimol), rot — gradus soat teskarisiga. Qo'lda o'zgartirsa bo'ladi.",
+ "items": [
+  {
+   "name": "playground_complex",
+   "x": 21.1,
+   "y": 55.9,
+   "rot": 0
+  },
+  {
+   "name": "blue_playground",
+   "x": 22.0,
+   "y": 100.6,
+   "rot": 0
+  },
+  {
+   "name": "spinning_platform",
+   "x": 20.6,
+   "y": 77.8,
+   "rot": 0
+  },
+  {
+   "name": "spinning_cone",
+   "x": 5.8,
+   "y": 65.5,
+   "rot": 0
+  },
+  {
+   "name": "spring_rider",
+   "x": 29.3,
+   "y": 88.7,
+   "rot": 0
+  },
+  {
+   "name": "stepping_pods",
+   "x": 1.74,
+   "y": 84.16,
+   "rot": 79
+  },
+  {
+   "name": "tube_slide",
+   "x": 17.49,
+   "y": 88.66,
+   "rot": 0
+  },
+  {
+   "name": "rope_tunnel",
+   "x": 19.74,
+   "y": 68.41,
+   "rot": 0
+  },
+  {
+   "name": "obstacle_course",
+   "x": 30.24,
+   "y": 78.16,
+   "rot": 79
+  },
+  {
+   "name": "nest_swing",
+   "x": 9.99,
+   "y": 75.91,
+   "rot": 53
+  },
+  {
+   "name": "climbing_dome",
+   "x": 22.74,
+   "y": 111.16,
+   "rot": 111
+  },
+  {
+   "name": "talk_tubes",
+   "x": 35.49,
+   "y": 56.41,
+   "rot": 46
+  },
+  {
+   "name": "ring_tunnel",
+   "x": 7.74,
+   "y": 56.41,
+   "rot": 46
+  },
+  {
+   "name": "fish_and_dome",
+   "x": 37.74,
+   "y": 75.91,
+   "rot": 79
+  },
+  {
+   "name": "caterpillar_tunnel",
+   "x": 38.49,
+   "y": 65.41,
+   "rot": 115
+  },
+  {
+   "name": "climbing_wall",
+   "x": -2.76,
+   "y": 68.41,
+   "rot": 115
+  },
+  {
+   "name": "seesaw",
+   "x": 30.99,
+   "y": 63.91,
+   "rot": 46
+  },
+  {
+   "name": "musical_pipes",
+   "x": 10.74,
+   "y": 100.66,
+   "rot": 90
+  },
+  {
+   "name": "shade_tree",
+   "x": -1.26,
+   "y": 74.41,
+   "rot": 0
+  },
+  {
+   "name": "shade_tree",
+   "x": 15.99,
+   "y": 107.41,
+   "rot": 73
+  },
+  {
+   "name": "shade_tree",
+   "x": 18.24,
+   "y": 47.41,
+   "rot": 146
+  }
+ ]
+}

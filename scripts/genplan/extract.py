@@ -23,7 +23,7 @@ from shapely import voronoi_polygons, simplify
 
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
 from common import ROOT, OUT_DIR, read_pdf, load_georef, pt_to_m, m_to_lonlat, lonlat_to_m  # noqa: E402
-from explication import E, HEIGHT, HEIGHT_DEFAULT  # noqa: E402
+from explication import DROP_AT, E, HEIGHT, HEIGHT_DEFAULT, MERGE_GAPS, PAD_AT  # noqa: E402
 
 # ---------- Ranglar → turlar ----------
 COLOR_KIND = {
@@ -45,6 +45,7 @@ COLOR_KIND = {
     (254, 204, 102): 'plaza',        # 72 atrofi
     (199, 200, 202): 'plaza',        # kulrang maydon; 51 yozuvi turgan qismi — parking
 }
+SURFACE_COLORS = {(242, 103, 34): 'rubber', (19, 103, 52): 'rubber_green', (181, 28, 33): 'rubber_edge'}
 MIN_AREA = {'lawn': 2.0, 'water': 4.0, 'building': 2.0, 'attraction': 3.0, 'playground': 2.0, 'plaza': 4.0}
 
 # Eski xaritadan olinadigan (planda rang bilan to'ldirilmagan) obyektlar
@@ -180,6 +181,13 @@ def main():
         name, kind, cat = E[s]
         cands = by_kind[kind]
         fp = None
+        if s in PAD_AT:  # qo'lda bog'langan: yozuv emas, ko'rsatilgan nuqtadagi maydoncha
+            p = Point(PAD_AT[s])
+            if not any(q.contains(p) for q in cands):
+                # planda boshqa rang bilan (masalan, bino rangida) chizilgan maydoncha — shu nuqtadagi istalgan shakl
+                anyk = [q for k in ('building', 'plaza', 'playground', 'attraction') for q in kinds[k] if q.contains(p)]
+                if anyk:
+                    cands = anyk
         if cands:
             inside = [q for q in cands if q.contains(p)]
             near = min(cands, key=lambda q: q.distance(p))
@@ -209,6 +217,24 @@ def main():
                             at=q.representative_point(), fp=q))
     print(f'✓ Raqamsiz attraksion maydonchalari: {len(unnamed)} ta ({", ".join(o["name"] for o in unnamed)})')
 
+    # ---------- 6a. Maydonchaga qo'shiladigan tor oraliqlar (explication.py → MERGE_GAPS) ----------
+    # Masalan, 30 (bolalar maydonchasi) va 28 (suv attraksioni) orasidagi ~1.4 m plitka — aslida maydoncha hududi
+    extra_rubber = []
+    for a_num, b_num, gap in MERGE_GAPS:
+        fa = next((o for o in objects if o['num'] == a_num and o['fp'] is not None), None)
+        fb = next((o for o in objects if o['num'] == b_num and o['fp'] is not None), None)
+        if not fa or not fb:
+            continue
+        fill = unary_union([fa['fp'], fb['fp']]).buffer(gap, join_style=2).buffer(-gap, join_style=2)
+        fill = fill.difference(fa['fp']).difference(fb['fp']).intersection(paving)
+        fill = unary_union([q for q in parts(fill) if q.area > 2])
+        if fill.is_empty:
+            continue
+        fa['fp'] = max(parts(unary_union([fa['fp'], fill.buffer(0.02)])), key=lambda q: q.area)
+        paving = unary_union([q for q in parts(paving.difference(fill.buffer(0.02))) if q.area > 3])
+        extra_rubber += parts(fill)
+        print(f"✓ {a_num} ga qo'shildi ({b_num} bilan oraliq): {round(fill.area)} m²")
+
     # ---------- 7. Marshrut chiziqlari (medial o'q) ----------
     paths = centerlines(paving)
     print(f'✓ Markaz chiziqlari: {len(paths)} ta, {round(sum(l.length for l in paths))} m')
@@ -225,6 +251,15 @@ def main():
     for k in ('lawn', 'water', 'plaza'):
         for p in kinds[k]:
             add(p, layer=k, source='plan')
+    # Bolalar maydonchasi qoplamasi (yumshoq rezina): plandagi ranglar alohida — to'q sariq asos, to'q yashil halqalar,
+    # qizil chetlar. Chizish tartibi shu (keyingisi ustida)
+    for c, kind in SURFACE_COLORS.items():
+        for q in parts(clean(pt_to_m(fills.get(c, Polygon()), G), 0.05)):
+            if q.area >= 0.5:
+                add(q, layer='surface', surface=kind, source='plan')
+        if kind == 'rubber':
+            for q in extra_rubber:
+                add(q, layer='surface', surface='rubber', source='merge')
     for g in ariq:
         add(g, layer='water', name='Канал Салар', source='existing')
     for g in kopriks:
@@ -232,7 +267,7 @@ def main():
     obj_fps = {id(o['fp']) for o in objects + unnamed if o['fp'] is not None}
     for k in ('building', 'attraction', 'playground'):
         for p in kinds[k]:
-            if id(p) not in obj_fps:
+            if id(p) not in obj_fps and not any(p.contains(Point(xy)) for xy in DROP_AT):
                 add(p, layer=k, source='plan')
     for name, g in extra_bld:
         num = OLD_BUILDINGS[name]

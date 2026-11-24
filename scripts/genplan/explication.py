@@ -44,12 +44,12 @@ E = {
     '29': ('Аттракцион "Junior jet 6"', 'attraction', 'fun'),
     '30': ('Детская площадка', 'playground', 'fun'),
     '31': ('Аттракцион "Mini Crazy Mill"', 'attraction', 'fun'),
-    '32': ('Аттракциoн "Spining coaster"', 'attraction', 'fun'),
+    '32': ('Аттракцион "3 Loops Coaster"', 'attraction', 'fun'),  # planda: "Spining coaster"
     '33': ('Аттракцион "Gameland"', 'attraction', 'fun'),
     '34': ('Аттракцион "Swing 20"', 'attraction', 'fun'),
     '35': ('Аттракцион "Family swinger"', 'attraction', 'fun'),
     '36': ('Аттракцион "Французская карусель"', 'attraction', 'fun'),
-    '37': ('Аттракцион "Mini jet 6" (Ground loading)', 'attraction', 'fun'),
+    '37': ('Аттракцион "Space Jet"', 'attraction', 'fun'),  # planda: "Mini jet 6" (Ground loading)
     '38': ('Аттракцион "Galleon 42"', 'attraction', 'fun'),
     '39': ('Аттракцион "Speady coaster"', 'attraction', 'fun'),
     '40': ('Аттракцион "Twist tower"', 'attraction', 'fun'),
@@ -89,6 +89,26 @@ E = {
     '72': ('Торговый киоск "Choko"', 'building', 'services'),
     '73': ('Веревочный городок', 'playground', 'fun'),
 }
+
+# Raqam yozuvi o'z maydonchasidan uzoqda turgan obyektlar: raqam → maydoncha ichidagi nuqta (park metrlari, x sharq, y shimol).
+# Joyida tekshirilgan (foydalanuvchi ko'rsatgan). Shu nuqtadagi rangli maydoncha shu raqamga beriladi.
+PAD_AT = {
+    '41': (-86.95, 47.67),  # Jumping star 6 — yozuv maydonchadan ~28 m sharqda
+    '32': (64.0, 85.0),     # 3 Loops Coaster — maydonchasi planda bino rangida chizilgan (21 × 35 m)
+    '33': (74.0, 55.0),     # Gameland — bino (26 × 15 m), planda nomsiz bino rangida
+}
+
+# Planda attraksionning o'zi (masalan, aylana belgisi) nomsiz bino bo'lib chiqqan joylar — o'rniga 3D model qo'yiladi,
+# shu nuqtadagi nomsiz shakl xaritaga chiqmaydi (park metrlari)
+DROP_AT = [
+    (49.6, 97.8),  # 26 — Swing 12 maydonchasidagi aylana
+    (51.4, 90.6),  # 31 — Mini Crazy Mill maydonchasidagi aylana
+]
+
+# Obyektlar orasidagi tor plitka oraliq birinchisiga qo'shiladi: (qaysi raqamga, qaysi raqam bilan oraliq, eng katta eni m)
+MERGE_GAPS = [
+    ('30', '28', 3.0),  # Детская площадка ↔ Водные гусеницы: oraliq maydoncha hududi, asfalt emas
+]
 
 # Bino balandligi (m), qolganlari — HEIGHT_DEFAULT
 HEIGHT = {'1': 7, '2': 7, '3': 6, '48': 8, '49': 18, '54': 8, '65': 7, '13': 6, '61': 6}

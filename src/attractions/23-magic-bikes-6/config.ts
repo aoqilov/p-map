@@ -1,11 +1,19 @@
 import { defineAttraction } from '../define';
+import modelUrl from './model.glb?url';
 
-/**
- * 23 — Аттракцион "Magic bikes 6"
- * Modeli hali yo'q — xaritada plandagi pushti quti. Model qo'shish: shu papkaga model.py (Blender skripti) va model.glb,
- * keyin `model` va `anim` ni to'ldiring (namuna: ../24-air-race/config.ts).
- */
+/** 23 — Аттракцион "Magic bikes 6". Model: model.py (Blender skripti) → model.glb */
 export default defineAttraction({
   num: '23',
-  name: 'Magic bikes 6',
+  name: 'Magic Bikes',
+  model: { url: modelUrl, natural: { width: 9.0, height: 8.2 } },
+  /** Old tomoni (kirish, yozuvlar) — shimol. Aylana maydonchada yo'nalish muhim emas */
+  bearing: 0,
+  anim: {
+    /** Bir aylanish necha soniyada (0 — aylanmaydi) */
+    secondsPerTurn: 12,
+    /** Savatlar yengil ko'tariladi: metr, sikl soniya, stagger — har biri necha soniya kech (0 — birga) */
+    lift: { meters: 0.8, seconds: 10, stagger: 0 },
+    /** Qo'l uchidagi parraklar: daqiqasiga aylanish (0 — to'xtagan) */
+    spin: { rpm: 40 },
+  },
 });

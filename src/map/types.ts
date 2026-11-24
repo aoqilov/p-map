@@ -32,6 +32,8 @@ export interface Attraction {
   num?: string | null;
   /** Plandagi maydoncha shakli — modeli yo'q attraksion shu shakldagi quti bo'lib chiziladi */
   footprint?: Poly | null;
+  /** Suv attraksioni (config/map.ts → WATER_RIDES): chetdagi tosh yo'lak, orol, qayiqlar yo'li (kanal o'rtasi), qayiqlar soni */
+  ride?: { rim: MultiPoly; island: MultiPoly; path: XY[]; boats: number };
 }
 
 export interface PoolFx {
@@ -89,6 +91,10 @@ export interface ParkData {
   trees: [number, number, number][];
   /** Gen plandagi fontanlar: markaz va sakkiz qirrali havza radiusi (m) */
   fountains?: { id: string; num: string | null; at: XY; r: number }[];
+  /** Bolalar maydonchasi yumshoq qoplamasi (plandagi ranglar): asos, yashil halqalar, qizil chetlar — chizish tartibida */
+  surfaces?: { kind: 'rubber' | 'rubber_green' | 'rubber_edge'; poly: Poly }[];
+  /** Panjaralar (config/map.ts → FENCES): uzluksiz bo'laklar (kirishlarda uzilgan), balandligi */
+  fences?: { id: string; height: number; lines: XY[][]; color?: 'fence' | 'fenceYellow' }[];
   /** Gulzorlar (gen plandagi to'q sariq konturlar) */
   beds?: Poly[];
   /** Ko'cha fonuslari [x, y] (yo'l chetlari bo'ylab, build:genplan) */

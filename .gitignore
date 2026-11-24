@@ -7,3 +7,4 @@ __pycache__/
 *.pyc
 .DS_Store
 src/attractions/*/preview*.png
+src/attractions/*/preview/

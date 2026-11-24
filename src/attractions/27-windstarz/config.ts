@@ -1,11 +1,20 @@
 import { defineAttraction } from '../define';
+import modelUrl from './model.glb?url';
 
-/**
- * 27 — Аттракцион "Windstarz"
- * Modeli hali yo'q — xaritada plandagi pushti quti. Model qo'shish: shu papkaga model.py (Blender skripti) va model.glb,
- * keyin `model` va `anim` ni to'ldiring (namuna: ../24-air-race/config.ts).
- */
+/** 27 — Аттракцион "Windstarz" (Windstar). Model: model.py (Blender skripti) → model.glb */
 export default defineAttraction({
   num: '27',
-  name: 'Windstarz',
+  name: 'Windstar',
+  model: { url: modelUrl, natural: { width: 16.8, height: 9.6 } },
+  /** Kirish (panjaradagi ochiq joy) — janub. Aylana maydonchada yo'nalish muhim emas */
+  bearing: 180,
+  anim: {
+    /** Bir aylanish necha soniyada (0 — aylanmaydi) */
+    secondsPerTurn: 8,
+    /**
+     * 6 ta qo'l ko'tariladi: necha gradus, sikl soniya (pastda turish → ko'tarilish → tepada turish → tushish),
+     * stagger — har bir keyingi qo'l necha soniya kech (0 — hammasi birga). degrees: 0 — o'chiq
+     */
+    tilt: { degrees: 40, seconds: 16, stagger: 0 },
+  },
 });

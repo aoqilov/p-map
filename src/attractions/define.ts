@@ -13,6 +13,11 @@ export interface AttractionDef {
    * natural — modelning asl o'lchami, metr (width — eng keng joyi, height — balandligi). Berilmasa — plandagi pushti quti.
    */
   model?: { url: string; natural: { width: number; height: number } };
+  /**
+   * Old tomoni qaragan yo'nalish, gradus: shimoldan soat strelkasi bo'yicha (0 — shimol, 90 — sharq).
+   * Modelning old tomoni — Blender'da -Y. Berilmasa — 0
+   */
+  bearing?: number;
   /** Xaritadagi o'lchami, metr (berilmasa — asl o'lcham). Nisbat o'zgarsa, model cho'ziladi */
   size?: { width: number; height: number };
   /** Animatsiya (Blender'dagi `rotor` va `lift*` qismlari). Qiymatlar har kadrda o'qiladi */

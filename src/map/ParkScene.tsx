@@ -8,6 +8,9 @@ import { Attractions, attractionTop } from './attractions';
 import { UserMarker } from './UserMarker';
 import { StreetLamps } from './StreetLamps';
 import { FlowerBeds, Fountains } from './EntranceFountain';
+import { RubberSurfaces } from './RubberSurface';
+import { Fences } from './Fences';
+import { PlaygroundEquipment } from './PlaygroundEquipment';
 import type { UserFix } from './useUserLocation';
 import { PALETTE, useThemeName } from './theme';
 import { RENDER } from './config';
@@ -456,6 +459,9 @@ export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(p
       <Fish data={data} pal={pal} />
       <Roads data={data} pal={pal} />
       <FlowerBeds data={data} pal={pal} />
+      <RubberSurfaces data={data} pal={pal} />
+      <Fences data={data} pal={pal} />
+      <PlaygroundEquipment />
       <Fountains data={data} />
       <Bridges data={data} pal={pal} />
       <Buildings data={data} pal={pal} selectedId={selectedId} onSelect={select} />

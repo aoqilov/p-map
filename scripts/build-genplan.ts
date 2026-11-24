@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as turf from '@turf/turf';
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Point, Polygon, Position, LineString } from 'geojson';
-import { ATTRACTION_SIZES, KASSA, type AttractionSize, type Category } from '../src/map/config';
+import { ATTRACTION_SIZES, FENCES, KASSA, WATER_RIDES, type AttractionSize, type Category } from '../src/map/config';
 import { project, type XY } from '../src/map/projection';
 import type { Area, Attraction, Bridge, Building, MultiPoly, ParkData, Poi, Poly } from '../src/map/types';
 import { distToBoundary, distToPoly, inPoly } from '../src/map/geo';
@@ -75,6 +75,20 @@ const anchorOf = (poly: Poly): XY => {
   return best;
 };
 
+/** Halqadagi eng yaqin nuqta */
+const nearestOnRing = (p: XY, ring: XY[]): XY => {
+  let best: XY = ring[0], bd = Infinity;
+  for (let i = 0; i < ring.length - 1; i++) {
+    const [a, b] = [ring[i], ring[i + 1]];
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L));
+    const q: XY = [a[0] + t * dx, a[1] + t * dy];
+    const d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    if (d < bd) { bd = d; best = q; }
+  }
+  return best;
+};
+
 // ---------- Chegara va yer ----------
 const boundaryF = layer('boundary')[0] as Feature<Polygon>;
 const ground: Poly = [toPoly(boundaryF.geometry.coordinates)[0]];
@@ -99,7 +113,25 @@ const waterAreas: Area[] = [];
     polys.forEach((poly, k) => waterAreas.push({ id: `${name.toLowerCase()}-${n}${k ? `-${k}` : ''}`, name, poly }));
   });
 }
-const waterUnion = unionAll(waterF);
+// ---------- Suv attraksionlari (config/map.ts → WATER_RIDES): maydoncha ichida yer ostidagi halqa kanal va orol ----------
+const rides = new Map<string, NonNullable<Attraction['ride']>>();
+const rideWater: PolyFeature[] = [];
+for (const f of layer('attraction').filter(isPoly)) {
+  const cfg = f.properties.num ? WATER_RIDES[f.properties.num] : undefined;
+  if (!cfg) continue;
+  const inset = (m: number) => turf.buffer(f, -m, { units: 'meters', steps: 6 }) as PolyFeature | undefined;
+  const outer = inset(cfg.rim), island = inset(cfg.rim + cfg.channel);
+  const mid = inset(cfg.rim + cfg.channel / 2);
+  if (!outer || !island || !mid) { console.warn(`⚠ Suv attraksioni ${f.properties.num}: maydoncha juda kichik`); continue; }
+  const channel = minus(outer, island);
+  if (!channel) continue;
+  rideWater.push(channel);
+  toMulti(channel).forEach((poly, k) => waterAreas.push({ id: `aqua-${f.properties.num}${k ? `-${k}` : ''}`, name: 'Aqua', poly }));
+  // qayiqlar yo'li — kanal o'rtasidagi halqa (eng uzun qismi)
+  const ring = toMulti(mid).map((pp) => pp[0]).sort((a, b) => b.length - a.length)[0];
+  rides.set(f.properties.num!, { rim: toMulti(minus(f as PolyFeature, outer)), island: toMulti(island), path: ring, boats: cfg.boats });
+}
+const waterUnion = unionAll([...waterF, ...rideWater]);
 const groundCut: MultiPoly = toMulti(minus(boundaryF as PolyFeature, waterUnion));
 
 // ---------- Yo'l va maydonlar (plitka) ----------
@@ -174,7 +206,8 @@ fc.features.forEach((f, i) => {
       const d = 2 * Math.sqrt(area(footprint) / Math.PI);
       const size = sizeFor(d);
       const height = p.num && HEIGHT_OVERRIDE[p.num] ? HEIGHT_OVERRIDE[p.num] : null;
-      attractions.push({ id, name: p.name ?? 'Аттракцион', at, size, bearing: 0, height, num: p.num ?? null, footprint });
+      attractions.push({ id, name: p.name ?? 'Аттракцион', at, size, bearing: 0, height, num: p.num ?? null, footprint,
+        ...(p.num && rides.has(p.num) ? { ride: rides.get(p.num) } : {}) });
       pending.push({ props: { ...p, category: p.category ?? 'fun' }, id, anchor: at, elevation: (height ?? ATTRACTION_SIZES[size].height) + 1 });
       break;
     }
@@ -350,7 +383,59 @@ const fountains: NonNullable<ParkData['fountains']> = layer('fountain_basin').fi
   return { id: `fountain-${f.properties.num ?? i + 1}`, num: f.properties.num ?? null, at, r: Number(f.properties.radius ?? 5) };
 });
 const beds = layer('bed').flatMap(polysOf);
+const SURFACE_ORDER = ['rubber', 'rubber_green', 'rubber_edge'] as const;
+const surfaces: NonNullable<ParkData['surfaces']> = SURFACE_ORDER.flatMap((kind) =>
+  layer('surface').filter((f) => (f.properties as { surface?: string }).surface === kind).flatMap(polysOf).map((poly) => ({ kind, poly })));
+console.log(`✓ Yumshoq qoplama: ${surfaces.length} bo'lak`);
 console.log(`✓ Fontanlar: ${fountains.length}, gulzorlar: ${beds.length}`);
+
+// ---------- Panjaralar: maydoncha cheti bo'ylab, kirishlarda va qo'shni obyekt bilan umumiy chegarada uzilgan ----------
+const fences: NonNullable<ParkData['fences']> = [];
+{
+  const deg = new Array(nodes.length).fill(0);
+  for (const [a, b] of edges) { deg[a]++; deg[b]++; }
+  const distSeg = (p: XY, a: XY, b: XY) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L));
+    return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+  };
+  const distRing = (p: XY, ring: XY[]) => Math.min(...ring.slice(1).map((q, i) => distSeg(p, ring[i], q)));
+  for (const [num, cfg] of Object.entries(FENCES)) {
+    const att = attractions.find((a) => a.num === num && a.footprint);
+    const area = playgrounds.find((a) => a.id === `n${num.replace('.', '-')}`) ??
+      (att ? { id: att.id, name: att.name, poly: att.footprint! } : undefined);
+    if (!area) { console.warn(`⚠ Panjara ${num}: maydoncha topilmadi`); continue; }
+    const ring = area.poly[0];
+    const skipRings = (cfg.skip ?? []).flatMap((n) => attractions.filter((a) => a.num === n).map((a) => a.footprint![0]));
+    // kirishlar: maydoncha tashqarisidagi, chegaraga yaqin yo'l uchlari (bitta qirrali tugunlar)
+    const gates = nodes.filter((n, i) => deg[i] === 1 && comp[i] === mainComp && !inPoly(n, area.poly) && distRing(n, ring) < cfg.gateReach);
+    const gatePts = [...gates, ...((cfg.gates ?? []) as XY[])].map((g) => nearestOnRing(g, ring));
+    // chegarani 0.5 m qadam bilan yurib, panjara bo'ladigan nuqtalarni ketma-ket bo'laklarga yig'amiz
+    const pts: { p: XY; on: boolean }[] = [];
+    for (let i = 0; i < ring.length - 1; i++) {
+      const [a, b] = [ring[i], ring[i + 1]];
+      const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.5));
+      for (let k = 0; k < n; k++) {
+        const p: XY = [a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n];
+        const on = !skipRings.some((r) => distRing(p, r) < 1.2) &&
+          !gatePts.some((g) => Math.hypot(g[0] - p[0], g[1] - p[1]) < cfg.gateWidth / 2);
+        pts.push({ p, on });
+      }
+    }
+    // halqa: birinchi "on" bo'lmagan nuqtadan boshlaymiz, bo'laklar uzilmasin
+    const start = Math.max(0, pts.findIndex((x) => !x.on));
+    const lines: XY[][] = [];
+    let cur: XY[] = [];
+    for (let k = 0; k <= pts.length; k++) {
+      const x = pts[(start + k) % pts.length];
+      if (x.on) cur.push([r2(x.p[0]), r2(x.p[1])]);
+      else { if (cur.length > 1) lines.push(cur); cur = []; }
+    }
+    if (cur.length > 1) lines.push(cur);
+    fences.push({ id: `fence-${num}`, height: cfg.height, lines, ...(cfg.color ? { color: cfg.color } : {}) });
+    console.log(`✓ Panjara ${num}: ${lines.length} bo'lak, ${Math.round(lines.reduce((s, l) => s + l.length * 0.5, 0))} m, ${gatePts.length} kirish`);
+  }
+}
 
 // ---------- Natija ----------
 const roadKm = edges.reduce((s, e) => s + e[2], 0) / 1000;
@@ -369,6 +454,8 @@ const data: ParkData = {
   lamps,
   fountains,
   beds,
+  surfaces,
+  fences,
   graph: { nodes, edges },
   pois,
   stats: {

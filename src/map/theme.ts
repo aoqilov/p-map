@@ -50,6 +50,11 @@ export const PALETTE = {
     attractionBoxEdge: '#b4457a',
     flowerBed: '#d8607f', // gulzor (gullar)
     padTop: '#d9d6cf', // modeli bor attraksion ostidagi maydoncha
+    rubber: '#ec7a32', // bolalar maydonchasi yumshoq qoplamasi (plandagi to'q sariq)
+    rubberGreen: '#2f7a45',
+    rubberEdge: '#c0362f',
+    fence: '#2c5e3f', // maydoncha panjarasi (to'q yashil metall)
+    fenceYellow: '#e0b21c', // attraksion panjarasi (sariq)
     wheel: '#f1f4f8',
   },
   dark: {
@@ -95,6 +100,11 @@ export const PALETTE = {
     attractionBoxEdge: '#f3a9c9',
     flowerBed: '#a84a63',
     padTop: '#a9a6a0',
+    rubber: '#b85e28',
+    rubberGreen: '#255f37',
+    rubberEdge: '#962b25',
+    fence: '#4f8a63',
+    fenceYellow: '#c99d17',
     wheel: '#cdd5e1',
   },
 } as const;
