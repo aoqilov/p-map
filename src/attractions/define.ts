@@ -4,8 +4,13 @@
 import type { GltfAnimation } from '../map/GltfModel';
 
 export interface AttractionDef {
-  /** Gen plan raqami ('24', '26.1') — xaritadagi joyi va backend bilan bog'lanish kaliti */
-  num: string;
+  /** Gen plan raqami ('24', '26.1') — xaritadagi joyi va backend bilan bog'lanish kaliti. Raqamsiz bo'lsa — `planName` */
+  num?: string;
+  /**
+   * Planda raqami yo'q attraksion (masalan, "Pirate jet", "Батут") — plandagi nomi bo'yicha topiladi (park.json → name).
+   * `num` bo'lsa, u ustun
+   */
+  planName?: string;
   /** Qisqa nom (dasturchi uchun; xaritada plandagi nom ko'rinadi) */
   name: string;
   /**

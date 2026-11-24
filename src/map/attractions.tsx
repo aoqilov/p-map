@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, type ComponentType } from 'react';
 import * as THREE from 'three';
 import { Edges } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import { ATTRACTIONS } from '../attractions';
+import { ATTRACTIONS, ATTRACTIONS_BY_NAME } from '../attractions';
 import type { AttractionDef } from '../attractions/define';
 import { extrude, polyToShape, toWorld } from './geometry';
 import { gltfModel } from './GltfModel';
@@ -16,8 +16,9 @@ export interface ModelProps {
 }
 
 /** Modeli bor attraksion sozlamasi (src/attractions/<raqam>-<nom>/config.ts). Yo'q bo'lsa — plandagi quti */
-const defFor = (item: Pick<Attraction, 'num'>): (AttractionDef & { model: NonNullable<AttractionDef['model']> }) | undefined => {
-  const d = item.num ? ATTRACTIONS[item.num] : undefined;
+const defFor = (item: Pick<Attraction, 'num' | 'name'>): (AttractionDef & { model: NonNullable<AttractionDef['model']> }) | undefined => {
+  // raqam bo'yicha; raqamsiz bo'lsa — plandagi nomi bo'yicha (define.ts → planName)
+  const d = item.num ? ATTRACTIONS[item.num] : ATTRACTIONS_BY_NAME[item.name];
   return d?.model ? (d as AttractionDef & { model: NonNullable<AttractionDef['model']> }) : undefined;
 };
 

@@ -123,6 +123,13 @@ NAME_AT: dict[tuple[float, float], tuple[str, str, str]] = {
     # (x, y): ('Nomi', 'kategoriya', '#rang'),
 }
 
+# Raqamsiz attraksion maydonchalari: plandagi yozuv → haqiqiy nomi (attraksion almashgan bo'lsa).
+# None — attraksion yo'q: xaritaga chiqmaydi, pin yo'q, o'rni yo'l plitasi bo'ladi
+RENAME_UNNAMED = {
+    'Батут': 'VR-9D Cinema',  # batut olib tashlangan, o'rnida VR-9D kinoteatr (src/attractions/vr-9d-cinema)
+    'Башня SKY TOWER': None,  # olib tashlangan
+}
+
 # Bino balandligi (m), qolganlari — HEIGHT_DEFAULT
 HEIGHT = {'1': 7, '2': 7, '3': 6, '48': 8, '49': 18, '54': 8, '65': 7, '13': 6, '61': 6}
 HEIGHT_DEFAULT = 3.5

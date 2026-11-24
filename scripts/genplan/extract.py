@@ -23,7 +23,7 @@ from shapely import minimum_bounding_circle, voronoi_polygons, simplify
 
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
 from common import ROOT, OUT_DIR, read_pdf, load_georef, pt_to_m, m_to_lonlat, lonlat_to_m  # noqa: E402
-from explication import DROP_AT, E, HEIGHT, HEIGHT_DEFAULT, MERGE_GAPS, MERGE_PADS, NAME_AT, PAD_AT  # noqa: E402
+from explication import DROP_AT, E, HEIGHT, HEIGHT_DEFAULT, MERGE_GAPS, MERGE_PADS, NAME_AT, PAD_AT, RENAME_UNNAMED  # noqa: E402
 
 # ---------- Ranglar → turlar ----------
 COLOR_KIND = {
@@ -209,14 +209,23 @@ def main():
     black = [(t['t'].strip(), pt_to_m(Point(t['x'], t['y']), G)) for t in texts
              if t['c'] == (0, 0, 0) and re.search(r'[A-Za-zА-Яа-я]{3,}', t['t']) and t['h'] > 6]
     unnamed = []
+    removed_pads = []        # RENAME_UNNAMED da None — xaritadan olib tashlanadi, o'rni yo'l plitasi bo'ladi
     for q in kinds['attraction']:
         if id(q) in used:
             continue
         lbl = [s for s, p in black if q.buffer(1).contains(p) and s.lower() not in ('аттракцион', 'attraction')]
-        unnamed.append(dict(num=None, name=' '.join(dict.fromkeys(lbl)) or 'Аттракцион', kind='attraction', category='fun',
+        nm = ' '.join(dict.fromkeys(lbl)) or 'Аттракцион'
+        nm = RENAME_UNNAMED.get(nm, nm)  # explication.py → RENAME_UNNAMED
+        if nm is None:
+            removed_pads.append(q)
+            continue
+        unnamed.append(dict(num=None, name=nm, kind='attraction', category='fun',
                             at=q.representative_point(), fp=q))
     # Bo'laklarga bo'lingan maydoncha (explication.py → MERGE_PADS): nomsiz bo'laklar raqamliga qo'shiladi, bitta doira
-    merged_pieces = []
+    merged_pieces = [id(q) for q in removed_pads]
+    if removed_pads:
+        paving = unary_union([paving] + [q.buffer(0.05) for q in removed_pads])
+        print(f"✓ Olib tashlangan maydonchalar: {len(removed_pads)} ta (o'rni — yo'l plitasi)")
     for num, pts in MERGE_PADS.items():
         o = next((o for o in objects if o['num'] == num and o['fp'] is not None), None)
         if not o:
