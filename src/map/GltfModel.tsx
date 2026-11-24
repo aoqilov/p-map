@@ -10,7 +10,8 @@
 // qilib yuklaydi — bo'laklar qayta harakatlantirilmasin.
 //   wheel   — charxpalak g'ildiragi: o'z gorizontal o'qi (lokal Z) atrofida aylanadi;
 //             uning bolalari cabin<N> teskari buriladi — kabinalar doim tik osilib turadi
-//   car<N>  — trassa bo'ylab yuradi (anim.follow, masalan Speady coaster poyezdi; trassa — model.py yozgan track.json)
+//   car<N>  — trassa bo'ylab yuradi (anim.follow, masalan Speady coaster poyezdi; trassa — model.py yozgan track.json);
+//             follow.independent — vagonlar ulanmagan, har biri o'zi yuradi (Cyclon)
 // Tezlik va balandlik config.ts da (masalan, AIR_RACE). Tanlangan holat pin bilan ko'rsatiladi.
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
@@ -86,6 +87,11 @@ export interface FollowAnimation {
   speed: { min: number; max: number };
   /** Bekatda turish, soniya (0 — to'xtamaydi) */
   dwell?: number;
+  /**
+   * Vagonlar bir-biriga ulanmagan (masalan, Cyclon): har biri o'zi yuradi, bekatda navbat bilan to'xtab jo'naydi,
+   * oldindagi vagonga `gap` metrdan yaqin kelmaydi (blok tizimi). Berilmasa — hammasi bitta poyezd (offset bo'yicha)
+   */
+  independent?: { gap: number };
 }
 
 export interface GltfOptions {
@@ -160,17 +166,22 @@ export function useModelAnimation(root: THREE.Object3D, anim: GltfAnimation) {
     const track = useMemo(() => (anim.follow ? trackSampler(anim.follow.track.points) : null), []);
     // Poyezd holati: trassa bo'ylab masofa va bekatda qolgan turish vaqti
     const train = useRef({ s: anim.follow?.track.station ?? 0, wait: anim.follow?.dwell ?? 0 });
+    // Mustaqil vagonlar (follow.independent): har birining o'z masofasi va turish vaqti. Boshida hammasi bekatda navbatda
+    const fleet = useRef(parts.cars.map((c, i) => ({
+      s: (anim.follow?.track.station ?? 0) - c.offset, wait: i === 0 ? anim.follow?.dwell ?? 0 : 0,
+    })));
     const tmp = useMemo(() => ({ p: new THREE.Vector3(), a: new THREE.Vector3(), b: new THREE.Vector3() }), []);
-    const placeCars = (s: number) => {
+    const placeCar = (node: THREE.Object3D, d: number) => {
       if (!track) return;
-      for (const { node, offset } of parts.cars) {
-        const d = s - offset;
-        track.at(d, tmp.p);
-        track.at(d + 0.4, tmp.a).sub(track.at(d - 0.4, tmp.b)).normalize();
-        node.position.copy(tmp.p);
-        // yo'nalish: gorizontal burilish (Y atrofida) va qiyalik (lokal Z atrofida); vagon lokal +X ga qaragan
-        node.rotation.set(0, Math.atan2(-tmp.a.z, tmp.a.x), Math.asin(THREE.MathUtils.clamp(tmp.a.y, -1, 1)), 'YZX');
-      }
+      track.at(d, tmp.p);
+      track.at(d + 0.4, tmp.a).sub(track.at(d - 0.4, tmp.b)).normalize();
+      node.position.copy(tmp.p);
+      // yo'nalish: gorizontal burilish (Y atrofida) va qiyalik (lokal Z atrofida); vagon lokal +X ga qaragan
+      node.rotation.set(0, Math.atan2(-tmp.a.z, tmp.a.x), Math.asin(THREE.MathUtils.clamp(tmp.a.y, -1, 1)), 'YZX');
+    };
+    const placeCars = (s: number) => {
+      if (anim.follow?.independent) parts.cars.forEach(({ node }, i) => placeCar(node, fleet.current[i]?.s ?? s));
+      else for (const { node, offset } of parts.cars) placeCar(node, s - offset);
     };
     // Animatsiya o'chiq bo'lsa ham vagonlar trassada (bekatda) tursin
     useLayoutEffect(() => placeCars(train.current.s), [parts]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -227,7 +238,29 @@ export function useModelAnimation(root: THREE.Object3D, anim: GltfAnimation) {
         const da = (anim.spin.rpm / 60) * Math.PI * 2 * dt;
         for (const n of parts.spinners) n.rotation.y = (n.rotation.y + da) % (Math.PI * 2);
       }
-      if (follows && track && anim.follow) {
+      if (follows && track && anim.follow?.independent) {
+        const f = anim.follow, cars = fleet.current, total = track.total, gap = f.independent!.gap;
+        const st = ((f.track.station % total) + total) % total;
+        const mod = (v: number) => ((v % total) + total) % total;
+        cars.forEach((c, i) => {
+          if (c.wait > 0) { c.wait -= dt; return; }
+          track.at(c.s, tmp.p);
+          const k = (tmp.p.y - track.yMin) / (track.yMax - track.yMin || 1);
+          let step = (f.speed.max + (f.speed.min - f.speed.max) * k) * dt;
+          // oldindagi vagongacha masofa — `gap` dan yaqinlashmaydi (bekatda navbat shu bilan hosil bo'ladi)
+          let ahead = Infinity;
+          cars.forEach((o, j) => { if (j !== i) { const d = mod(o.s - c.s); if (d > 0 && d < ahead) ahead = d; } });
+          step = Math.min(step, Math.max(0, ahead - gap));
+          // bekat: yetib kelgan vagon to'xtab, yo'lovchi oladi
+          const toStation = mod(st - c.s);
+          if ((f.dwell ?? 0) > 0 && toStation > 0 && toStation <= step) {
+            step = toStation;
+            c.wait = f.dwell!;
+          }
+          c.s = mod(c.s + step);
+        });
+        placeCars(0);
+      } else if (follows && track && anim.follow) {
         const tr = train.current, f = anim.follow;
         if (tr.wait > 0) tr.wait -= dt;
         else {

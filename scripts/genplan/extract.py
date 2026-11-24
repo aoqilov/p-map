@@ -19,11 +19,11 @@ from collections import defaultdict
 import numpy as np
 from shapely.geometry import Point, LineString, MultiPoint, Polygon, MultiPolygon, mapping, shape
 from shapely.ops import unary_union, linemerge, polygonize
-from shapely import voronoi_polygons, simplify
+from shapely import minimum_bounding_circle, voronoi_polygons, simplify
 
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).parent))
 from common import ROOT, OUT_DIR, read_pdf, load_georef, pt_to_m, m_to_lonlat, lonlat_to_m  # noqa: E402
-from explication import DROP_AT, E, HEIGHT, HEIGHT_DEFAULT, MERGE_GAPS, PAD_AT  # noqa: E402
+from explication import DROP_AT, E, HEIGHT, HEIGHT_DEFAULT, MERGE_GAPS, MERGE_PADS, NAME_AT, PAD_AT  # noqa: E402
 
 # ---------- Ranglar → turlar ----------
 COLOR_KIND = {
@@ -215,6 +215,22 @@ def main():
         lbl = [s for s, p in black if q.buffer(1).contains(p) and s.lower() not in ('аттракцион', 'attraction')]
         unnamed.append(dict(num=None, name=' '.join(dict.fromkeys(lbl)) or 'Аттракцион', kind='attraction', category='fun',
                             at=q.representative_point(), fp=q))
+    # Bo'laklarga bo'lingan maydoncha (explication.py → MERGE_PADS): nomsiz bo'laklar raqamliga qo'shiladi, bitta doira
+    merged_pieces = []
+    for num, pts in MERGE_PADS.items():
+        o = next((o for o in objects if o['num'] == num and o['fp'] is not None), None)
+        if not o:
+            continue
+        pieces = [u for u in unnamed if any(u['fp'].contains(Point(xy)) for xy in pts)]
+        if not pieces:
+            continue
+        # bo'laklar doiraning bir qismini (sektor kesilgan) qoplaydi — eng kichik o'rab oluvchi doira
+        hull = minimum_bounding_circle(unary_union([o['fp']] + [u['fp'] for u in pieces]))
+        unnamed = [u for u in unnamed if u not in pieces]
+        merged_pieces.extend([id(o['fp'])] + [id(u['fp']) for u in pieces])  # asl bo'laklar alohida chizilmasin
+        o['fp'] = hull
+        paving = unary_union([q for q in parts(paving.difference(hull)) if q.area > 3])
+        print(f'✓ {num}: {len(pieces)} ta bo\'lak qo\'shildi → {round(hull.area, 1)} m²')
     print(f'✓ Raqamsiz attraksion maydonchalari: {len(unnamed)} ta ({", ".join(o["name"] for o in unnamed)})')
 
     # ---------- 6a. Maydonchaga qo'shiladigan tor oraliqlar (explication.py → MERGE_GAPS) ----------
@@ -264,11 +280,17 @@ def main():
         add(g, layer='water', name='Канал Салар', source='existing')
     for g in kopriks:
         add(g, layer='bridge', source='existing')
-    obj_fps = {id(o['fp']) for o in objects + unnamed if o['fp'] is not None}
+    obj_fps = {id(o['fp']) for o in objects + unnamed if o['fp'] is not None} | set(merged_pieces)
     for k in ('building', 'attraction', 'playground'):
         for p in kinds[k]:
             if id(p) not in obj_fps and not any(p.contains(Point(xy)) for xy in DROP_AT):
-                add(p, layer=k, source='plan')
+                named = next((v for xy, v in NAME_AT.items() if k == 'building' and p.contains(Point(xy))), None)
+                if named:  # explication.py → NAME_AT: nomsiz binoga nom, kategoriya, rang
+                    name, cat, color = named
+                    add(p, layer=k, name=name, category=cat, height=HEIGHT_DEFAULT, color=color, source='plan')
+                    print(f'✓ Nomsiz bino → {name}')
+                else:
+                    add(p, layer=k, source='plan')
     for name, g in extra_bld:
         num = OLD_BUILDINGS[name]
         if num and any(o['num'] == num and o['fp'] is not None for o in objects):
@@ -287,6 +309,9 @@ def main():
         props = dict(layer=layer, num=o['num'], name=o['name'], category=o['category'], source='plan')
         if o['kind'] == 'building':
             props['height'] = HEIGHT.get(o['num'], HEIGHT_DEFAULT)
+            color = next((v[2] for xy, v in NAME_AT.items() if o['fp'] is not None and o['fp'].contains(Point(xy))), None)
+            if color:  # explication.py → NAME_AT: raqamli bino faqat rang oladi
+                props['color'] = color
         add(o['fp'] if o['fp'] is not None else o['at'], **props)
         if o['fp'] is not None:  # yozuv nuqtasi ham kerak (pin uchun)
             pass

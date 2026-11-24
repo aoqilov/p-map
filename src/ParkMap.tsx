@@ -103,6 +103,32 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
   const [showRoute, setShowRoute] = useState(false);
   const [showTrees, setShowTrees] = useState(true);
   const [lampsLit, setLampsLit] = useState(STREET_LAMP.lightsOn);
+  // Pritsel: ekran markazidagi nuqtaning park koordinatasi (metr) — explication.py (PAD_AT, NAME_AT) uchun
+  const [aim, setAim] = useState(false);
+  const [aimXY, setAimXY] = useState<[number, number] | null>(null);
+  const [aimCopied, setAimCopied] = useState(false);
+  useEffect(() => {
+    if (!aim) return;
+    let raf = 0, last = '';
+    const tick = () => {
+      const p = map.current?.pointAtCenter() ?? null;
+      const key = p ? `${p[0]}|${p[1]}` : '';
+      if (key !== last) { last = key; setAimXY(p); setAimCopied(false); }
+      raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => cancelAnimationFrame(raf);
+  }, [aim]);
+  const copyAim = () => {
+    if (!aimXY) return;
+    const text = `(${aimXY[0].toFixed(1)}, ${aimXY[1].toFixed(1)})`;
+    const done = () => setAimCopied(true);
+    try {
+      navigator.clipboard.writeText(text).then(done, () => window.prompt('Koordinata:', text));
+    } catch {
+      window.prompt('Koordinata:', text);
+    }
+  };
   const [follow, setFollow] = useState(false);
   const [toastHidden, setToastHidden] = useState(false);
   const [view, setView] = useState<ViewInfo>({ ...HOME_VIEW, rotated: false });
@@ -265,6 +291,17 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
         />
       </div>
 
+      {aim && (
+        <div className="aim">
+          <span className="aim__cross" aria-hidden="true" />
+          <button type="button" className="aim__label" onClick={copyAim} disabled={!aimXY}
+            aria-label="Koordinatani nusxalash">
+            {aimXY ? <>x <b>{aimXY[0].toFixed(1)}</b> · y <b>{aimXY[1].toFixed(1)}</b></> : 'Xarita tashqarisi'}
+            <span className="aim__hint">{aimCopied ? 'Nusxa olindi ✓' : 'Bosing — nusxa'}</span>
+          </button>
+        </div>
+      )}
+
       <div className="top gutter" ref={topRef}>
         <header className="bar">
           <div className="brand">
@@ -362,6 +399,10 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
         )}
         <button type="button" onClick={() => map.current?.reset()} aria-label="Butun parkni ko'rsatish">
           <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+        </button>
+        <button type="button" className={`aim-btn${aim ? ' is-on' : ''}`} onClick={() => setAim((v) => !v)}
+          aria-pressed={aim} aria-label="Pritsel: markazdagi nuqta koordinatasi" title="Pritsel: markazdagi nuqta koordinatasi">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" /><path d="M12 2v5M12 17v5M2 12h5M17 12h5" /><circle className="fill" cx="12" cy="12" r="1.2" /></svg>
         </button>
         <button type="button" className={showTrees ? 'is-on' : ''} onClick={() => setShowTrees((v) => !v)}
           aria-pressed={showTrees} aria-label="Daraxtlar">

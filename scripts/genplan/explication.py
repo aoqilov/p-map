@@ -25,7 +25,7 @@ E = {
     '11': ('Фонтан "Каскад"', 'fountain', 'fun'),
     '12': ('Кафе на 10 мест', 'building', 'services'),
     '13': ('Кафе "Замок эльфов"', 'building', 'services'),
-    '14': ('Тир', 'building', 'fun'),
+    '14': ('Тир', 'attraction', 'fun'),  # bino, lekin 3D model bilan (src/attractions/14-tir) — attraksion sifatida
     '15': ('Кафе на 10 мест', 'building', 'services'),
     '16': ('Домик "Шляпника"', 'building', 'services'),
     '17': ('"Сладкий домик"', 'building', 'services'),
@@ -96,6 +96,7 @@ PAD_AT = {
     '41': (-86.95, 47.67),  # Jumping star 6 — yozuv maydonchadan ~28 m sharqda
     '32': (64.0, 85.0),     # 3 Loops Coaster — maydonchasi planda bino rangida chizilgan (21 × 35 m)
     '33': (74.0, 55.0),     # Gameland — bino (26 × 15 m), planda nomsiz bino rangida
+    '14': (55.8, -24.3),    # Тир — plandagi 14 yozuvi tor binoga tushgan; haqiqiy tir — 9.7 × 9.8 m bino
 }
 
 # Planda attraksionning o'zi (masalan, aylana belgisi) nomsiz bino bo'lib chiqqan joylar — o'rniga 3D model qo'yiladi,
@@ -105,10 +106,22 @@ DROP_AT = [
     (51.4, 90.6),  # 31 — Mini Crazy Mill maydonchasidagi aylana
 ]
 
+# Planda chiziqlar bilan bo'laklarga bo'lingan bitta attraksion maydonchasi: raqam → qo'shiladigan nomsiz bo'laklar ichidagi
+# nuqtalar (park metrlari). Bo'laklarni o'rab oluvchi eng kichik doira olinadi
+MERGE_PADS = {
+    '29': [(61.07, 14.86)],  # Junior jet 6 — doiraning shimoliy qismi alohida "Аттракцион" bo'lib chiqqan
+}
+
 # Obyektlar orasidagi tor plitka oraliq birinchisiga qo'shiladi: (qaysi raqamga, qaysi raqam bilan oraliq, eng katta eni m)
 MERGE_GAPS = [
     ('30', '28', 3.0),  # Детская площадка ↔ Водные гусеницы: oraliq maydoncha hududi, asfalt emas
 ]
+
+# Planda nomsiz chizilgan binolar: shu nuqtadagi bino nom, kategoriya (pin chiqadi) va rang oladi (park metrlari).
+# Rang — xaritadagi devor/tom rangi (berilmasa — oddiy bino rangi). Raqamli bino (PAD_AT) shu yerdan faqat rang oladi
+NAME_AT: dict[tuple[float, float], tuple[str, str, str]] = {
+    # (x, y): ('Nomi', 'kategoriya', '#rang'),
+}
 
 # Bino balandligi (m), qolganlari — HEIGHT_DEFAULT
 HEIGHT = {'1': 7, '2': 7, '3': 6, '48': 8, '49': 18, '54': 8, '65': 7, '13': 6, '61': 6}

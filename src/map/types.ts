@@ -10,6 +10,8 @@ export interface Building {
   name: string;
   poly: Poly;
   height: number;
+  /** O'z rangi (tom va devor), masalan tir — qizil. Berilmasa — mavzudagi bino rangi */
+  color?: string;
 }
 
 export interface Area {

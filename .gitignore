@@ -8,3 +8,4 @@ __pycache__/
 .DS_Store
 src/attractions/*/preview*.png
 src/attractions/*/preview/
+src/decor/*/preview*.png

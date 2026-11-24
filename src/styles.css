@@ -636,3 +636,57 @@ svg { display: block; }
 @media (prefers-reduced-motion: reduce) {
   .me-dot::after, .tools .locate.is-busy svg { animation: none; }
 }
+
+/* ---------- Pritsel: markazdagi nuqta koordinatasi ---------- */
+.tools .aim-btn .fill { fill: currentColor; stroke: none; }
+.aim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.aim__cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #ff3b30;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+.aim__cross::before,
+.aim__cross::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  transform: translate(-50%, -50%);
+}
+.aim__cross::before { width: 64px; height: 2px; }
+.aim__cross::after { width: 2px; height: 64px; }
+.aim__label {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 40px);
+  transform: translateX(-50%);
+  pointer-events: auto;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  font: 500 14px/1.2 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.aim__label b { font-weight: 700; }
+.aim__hint { font-size: 11px; color: var(--muted); }

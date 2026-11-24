@@ -27,6 +27,8 @@ interface Props {
   category?: Category | null;
   height?: number;
   radius?: number;
+  /** Bino rangi (explication.py → NAME_AT) */
+  color?: string;
   source?: string;
 }
 const fc: FeatureCollection<Polygon | MultiPolygon | LineString | Point, Props> = JSON.parse(fs.readFileSync(SRC, 'utf8'));
@@ -184,7 +186,8 @@ fc.features.forEach((f, i) => {
   switch (p.layer) {
     case 'building': {
       const h = p.height ?? 3.5;
-      polys.forEach((pp, k) => buildings.push({ id: k ? `${id}-${k}` : id, name: p.name ?? 'Bino', poly: pp, height: h }));
+      polys.forEach((pp, k) => buildings.push({ id: k ? `${id}-${k}` : id, name: p.name ?? 'Bino', poly: pp, height: h,
+        ...(p.color ? { color: p.color } : {}) }));
       if (p.category && p.name) pending.push({ props: p, id, anchor: at, elevation: h });
       break;
     }

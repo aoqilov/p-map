@@ -11,6 +11,7 @@ import { FlowerBeds, Fountains } from './EntranceFountain';
 import { RubberSurfaces } from './RubberSurface';
 import { Fences } from './Fences';
 import { PlaygroundEquipment } from './PlaygroundEquipment';
+import { Decor } from './Decor';
 import type { UserFix } from './useUserLocation';
 import { PALETTE, useThemeName } from './theme';
 import { RENDER } from './config';
@@ -76,6 +77,8 @@ export interface MapApi {
   setTilt(polarDeg: number): void;
   /** Burilish va qiyalikni boshlang'ich holatga qaytarish (kompas) */
   resetRotation(): void;
+  /** Ekran (xarita konteyneri) markazidagi yer nuqtasi — park koordinatasi, metr (pritsel uchun) */
+  pointAtCenter(): XY | null;
 }
 
 /** Xarita ustidagi UI panellari egallagan joy (px) — kamera shu joydan tashqarini ko'rinadigan maydon deb hisoblaydi */
@@ -363,6 +366,10 @@ const CameraRig = forwardRef<MapApi, {
       const maxD = polar > THREE.MathUtils.degToRad(60) ? fitDist.current / 2.5 : Infinity;
       animateTo({ ...c.view, polar, dist: THREE.MathUtils.clamp(c.view.dist, Math.min(minD, fitDist.current), maxD) });
     },
+    pointAtCenter() {
+      const g = groundAt(cam, size.width / 2, size.height / 2, size.width, size.height);
+      return g ? [Math.round(g.x * 100) / 100, Math.round(-g.z * 100) / 100] : null;
+    },
     resetRotation() {
       touched.current = true;
       const c = ctl.current;
@@ -462,6 +469,7 @@ export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(p
       <RubberSurfaces data={data} pal={pal} />
       <Fences data={data} pal={pal} />
       <PlaygroundEquipment />
+      <Decor />
       <Fountains data={data} />
       <Bridges data={data} pal={pal} />
       <Buildings data={data} pal={pal} selectedId={selectedId} onSelect={select} />

@@ -11,6 +11,7 @@ import { liveOf, shortLabel, statusLine } from '../api/live';
 import { curbGeometry, curbTexture, stoneTexture } from './pavement';
 import { attractionRadius } from './attractions';
 import { waterLevelAt, waterLevelUnder } from './water';
+import { DECOR, decorClearRadius } from '../decor';
 
 const LIE_FLAT: [number, number, number] = [-Math.PI / 2, 0, 0];
 
@@ -130,8 +131,8 @@ function BuildingMesh({ b, pal, selected, onSelect, base }: {
   return (
     <mesh geometry={geom} rotation={LIE_FLAT} position-y={base} castShadow receiveShadow
       onClick={(e) => { if (!isTap(e)) return; e.stopPropagation(); onSelect(b.id); }}>
-      <meshStandardMaterial attach="material-0" color={selected ? pal.selected : pal.roof} />
-      <meshStandardMaterial attach="material-1" color={selected ? pal.selected : pal.wall} />
+      <meshStandardMaterial attach="material-0" color={selected ? pal.selected : b.color ?? pal.roof} />
+      <meshStandardMaterial attach="material-1" color={selected ? pal.selected : b.color ?? pal.wall} />
       <Edges color={pal.edge} threshold={25} />
     </mesh>
   );
@@ -157,7 +158,10 @@ export function Trees({ data, pal }: { data: ParkData; pal: Palette }) {
   const crowns = useRef<THREE.InstancedMesh>(null!);
   // Attraksion platformalari ostida daraxt qolmasin (haqiqiy o'lcham faqat brauzerda ma'lum)
   const trees = useMemo(() => {
-    const zones = data.attractions.map((a) => ({ at: a.at, r: attractionRadius(a) + 1.5 }));
+    const zones = [
+      ...data.attractions.map((a) => ({ at: a.at, r: attractionRadius(a) + 1.5 })),
+      ...DECOR.map((d) => ({ at: d.at, r: decorClearRadius(d) })), // bezaklar (Eyfel minorasi va h.k.)
+    ];
     return data.trees.filter(([x, y]) => zones.every((z) => Math.hypot(x - z.at[0], y - z.at[1]) > z.r));
   }, [data]);
   const count = trees.length;
