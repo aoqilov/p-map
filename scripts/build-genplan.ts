@@ -9,12 +9,14 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import * as turf from '@turf/turf';
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Point, Polygon, Position, LineString } from 'geojson';
 import { ATTRACTION_SIZES, FENCES, KASSA, WATER_RIDES, type AttractionSize, type Category } from '../src/map/config';
-import { project, type XY } from '../src/map/projection';
+import { project, unproject, type XY } from '../src/map/projection';
 import type { Area, Attraction, Bridge, Building, MultiPoly, ParkData, Poi, Poly } from '../src/map/types';
 import { distToBoundary, distToPoly, inPoly } from '../src/map/geo';
+import type { BuildingDef, PlanModelDef } from '../src/decor/define';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SRC = path.join(ROOT, 'data/genplan/genplan.geojson');
@@ -96,8 +98,49 @@ const boundaryF = layer('boundary')[0] as Feature<Polygon>;
 const ground: Poly = [toPoly(boundaryF.geometry.coordinates)[0]];
 const bounds = bbox(ground);
 
+// ---------- Bezak-binolar (src/decor/*/building.ts): planda yo'q, 3D modeli bor binolar (tibbiyot xonasi va h.k.) ----------
+const DECOR_DIR = path.join(ROOT, 'src/decor');
+const extraDefs: BuildingDef[] = [];
+/** Plandagi mavjud binoga qo'yilgan modellar (hojatxona n7, n8): qutisi yashiriladi */
+const planModels: PlanModelDef[] = [];
+for (const dir of fs.readdirSync(DECOR_DIR).sort()) {
+  const file = path.join(DECOR_DIR, dir, 'building.ts');
+  if (!fs.existsSync(file)) continue;
+  const mod = (await import(pathToFileURL(file).href)).default as BuildingDef | PlanModelDef | (BuildingDef | PlanModelDef)[];
+  for (const d of [mod].flat()) {
+    if ('plan' in d) planModels.push(d);
+    else extraDefs.push(d);
+  }
+}
+/** Bino izi: markaz, old yo'nalish (bearing), eni × chuqurligi → to'rtburchak (yoki doira — shape: 'circle') */
+const rectOf = (d: BuildingDef): Poly => {
+  if (d.shape === 'circle') {
+    const ring: XY[] = Array.from({ length: 32 }, (_, i) => {
+      const a = (i / 32) * Math.PI * 2;
+      return [r2(d.at[0] + Math.cos(a) * d.width / 2), r2(d.at[1] + Math.sin(a) * d.width / 2)];
+    });
+    return [[...ring, ring[0]]];
+  }
+  const b = (d.bearing * Math.PI) / 180;
+  const f: XY = [Math.sin(b), Math.cos(b)], r: XY = [Math.cos(b), -Math.sin(b)];
+  const pt = (sx: number, sy: number): XY =>
+    [r2(d.at[0] + r[0] * sx * d.width / 2 + f[0] * sy * d.depth / 2), r2(d.at[1] + r[1] * sx * d.width / 2 + f[1] * sy * d.depth / 2)];
+  const ring = [pt(-1, -1), pt(1, -1), pt(1, 1), pt(-1, 1)];
+  return [[...ring, ring[0]]];
+};
+const extraPolys = extraDefs.map(rectOf);
+/** Yo'l plitkasi o'rniga qo'yilgan bezaklar (sharshara): izi plitkadan kesiladi, marshrut u orqali o'tmaydi */
+const cutPolys = extraPolys.filter((_, i) => extraDefs[i].cutPaving);
+const cutF: PolyFeature[] = cutPolys.map((pp) => turf.polygon([pp[0].map(unproject)]));
+const inCut = (a: XY, b: XY) => cutPolys.some((pp) =>
+  [0, 0.25, 0.5, 0.75, 1].some((t) => inPoly([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], pp)));
+
 // ---------- Suv: eng kattasi — Hovuz (baliqlar shu yerda), kanal — Ariq, sharqdagi basseynlar — Basseyn ----------
-const waterF = layer('water').filter(isPoly);
+// Bezak-bino ostida qolgan suv (masalan, basseyn o'rniga tibbiyot xonasi) — olib tashlanadi
+const waterF = layer('water').filter(isPoly).filter((f) => {
+  const c = P(turf.centroid(f).geometry.coordinates);
+  return !extraPolys.some((pp) => inPoly(c, pp));
+});
 const waterAreas: Area[] = [];
 {
   const sized = waterF.map((f) => ({ f, polys: polysOf(f), a: turf.area(f) })).sort((a, b) => b.a - a.a);
@@ -137,7 +180,7 @@ const waterUnion = unionAll([...waterF, ...rideWater]);
 const groundCut: MultiPoly = toMulti(minus(boundaryF as PolyFeature, waterUnion));
 
 // ---------- Yo'l va maydonlar (plitka) ----------
-const roadsF = unionAll([...layer('paving'), ...layer('plaza')].filter(isPoly));
+const roadsF = minus(unionAll([...layer('paving'), ...layer('plaza')].filter(isPoly)), unionAll(cutF));
 const roads = toMulti(roadsF);
 
 // ---------- Ko'priklar ----------
@@ -221,6 +264,18 @@ fc.features.forEach((f, i) => {
   }
 });
 
+extraDefs.forEach((d, i) => {
+  buildings.push({ id: d.id, name: d.name, poly: extraPolys[i], height: d.height, model: true });
+  if (d.category) pending.push({ props: { layer: 'building', name: d.name, category: d.category }, id: d.id, anchor: d.at, elevation: d.height });
+});
+for (const m of planModels) {
+  const b = buildings.find((x) => x.id === m.plan);
+  if (b) b.model = true;
+  else console.warn(`⚠ Model: plandagi "${m.plan}" bino topilmadi`);
+}
+if (planModels.length) console.log(`✓ Plan binolariga model: ${planModels.map((m) => m.plan).join(', ')}`);
+if (extraDefs.length) console.log(`✓ Bezak-binolar: ${extraDefs.map((d) => d.name).join(', ')}`);
+
 // ---------- Marshrut grafi: markaz chiziqlari, umumiy uchlar bitta tugun ----------
 const nodes: XY[] = [];
 const grid = new Map<string, number[]>();
@@ -241,6 +296,7 @@ const edgeMap = new Map<string, [number, number, number]>();
 for (const f of layer('path')) {
   const pts = (f.geometry as LineString).coordinates.map(P);
   for (let k = 0; k < pts.length - 1; k++) {
+    if (inCut(pts[k], pts[k + 1])) continue; // sharshara o'rnidagi yo'l — marshrut yo'q
     const a = nodeId(pts[k]), b = nodeId(pts[k + 1]);
     if (a === b) continue;
     const key = a < b ? `${a}-${b}` : `${b}-${a}`;

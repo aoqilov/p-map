@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="384" viewBox="0 0 512 384">
+  <!-- Hojatxona kartasi: erkak (ko'k) va ayol (qizil) belgisi, ostida WC. Xaritada doim ko'ruvchiga qaragan (Decor.tsx) -->
+  <rect x="8" y="8" width="496" height="368" rx="48" fill="#ffffff" stroke="#6b4226" stroke-width="16"/>
+  <!-- erkak -->
+  <g fill="#2a66c8">
+    <circle cx="150" cy="78" r="30"/>
+    <rect x="108" y="118" width="84" height="104" rx="18"/>
+    <rect x="114" y="200" width="32" height="96" rx="12"/>
+    <rect x="154" y="200" width="32" height="96" rx="12"/>
+  </g>
+  <!-- ajratuvchi chiziq -->
+  <rect x="250" y="52" width="12" height="244" rx="6" fill="#6b4226"/>
+  <!-- ayol -->
+  <g fill="#d93650">
+    <circle cx="362" cy="78" r="30"/>
+    <path d="M338 118 H386 Q398 118 402 130 L434 238 H290 L322 130 Q326 118 338 118 Z"/>
+    <rect x="334" y="230" width="28" height="66" rx="11"/>
+    <rect x="362" y="230" width="28" height="66" rx="11"/>
+  </g>
+  <text x="256" y="356" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="60" font-weight="700" fill="#6b4226">WC</text>
+</svg>

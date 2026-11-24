@@ -128,6 +128,13 @@ function BuildingMesh({ b, pal, selected, onSelect, base }: {
 }) {
   // Suv ichidagi bino (rotonda) suv sathidan boshlanadi — ostida bo'shliq qolmaydi
   const geom = useDisposable(() => extrude(polyToShape(b.poly), b.height - base), [b, base]);
+  // 3D modeli bor bino (src/decor/*/building.ts): quti ko'rinmaydi, faqat bosish uchun turadi
+  if (b.model) return (
+    <mesh geometry={geom} rotation={LIE_FLAT} position-y={base}
+      onClick={(e) => { if (!isTap(e)) return; e.stopPropagation(); onSelect(b.id); }}>
+      <meshBasicMaterial visible={false} />
+    </mesh>
+  );
   return (
     <mesh geometry={geom} rotation={LIE_FLAT} position-y={base} castShadow receiveShadow
       onClick={(e) => { if (!isTap(e)) return; e.stopPropagation(); onSelect(b.id); }}>

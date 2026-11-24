@@ -690,3 +690,54 @@ svg { display: block; }
 }
 .aim__label b { font-weight: 700; }
 .aim__hint { font-size: 11px; color: var(--muted); }
+
+/* ---------- 3-shaxs yurish rejimi ---------- */
+.tools .walk-btn .fill { fill: currentColor; stroke: none; }
+.tools .walk-btn.is-on { background: var(--accent); color: var(--accent-ink); }
+.joystick {
+  position: absolute;
+  left: max(24px, env(safe-area-inset-left, 0px));
+  z-index: 3;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  border: 2px solid color-mix(in srgb, var(--fg) 18%, transparent);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.joystick.is-on { border-color: var(--accent); }
+.joystick__knob {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 4px 14px rgba(20, 40, 80, 0.35);
+  pointer-events: none;
+  transition: transform 0.12s ease-out;
+}
+.joystick.is-on .joystick__knob { transition: none; }
+.walk-hint {
+  position: absolute;
+  left: 50%;
+  top: 132px;
+  transform: translateX(-50%);
+  z-index: 3;
+  max-width: min(320px, calc(100% - 32px));
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow);
+  font: 500 13px/1.35 var(--font-ui);
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .joystick__knob { transition: none; }
+}

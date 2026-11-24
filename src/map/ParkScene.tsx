@@ -12,6 +12,7 @@ import { RubberSurfaces } from './RubberSurface';
 import { Fences } from './Fences';
 import { PlaygroundEquipment } from './PlaygroundEquipment';
 import { Decor } from './Decor';
+import { Walker, type WalkInput, type WalkPose } from './Walker';
 import type { UserFix } from './useUserLocation';
 import { PALETTE, useThemeName } from './theme';
 import { RENDER } from './config';
@@ -104,6 +105,8 @@ export interface ParkSceneProps {
   onUserInteract?: () => void;
   /** Burilish/qiyalik o'zgardi (kompas va qiyalik tugmasi uchun) */
   onViewChange?: (v: ViewInfo) => void;
+  /** 3-shaxs yurish rejimi (berilsa — personaj paydo bo'ladi, kamera uning orqasidan): joystik holati va rang */
+  walk?: { input: React.MutableRefObject<WalkInput>; accent: string } | null;
 }
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -112,7 +115,8 @@ type Anim = { from: View; to: View; t: number };
 
 const CameraRig = forwardRef<MapApi, {
   data: ParkData; insetsRef: React.MutableRefObject<Insets>; onUserInteract?: () => void; onViewChange?: (v: ViewInfo) => void; fogColor: string;
-}>(function CameraRig({ data, insetsRef, onUserInteract, onViewChange, fogColor }, ref) {
+  walking: boolean; walkPose: React.MutableRefObject<WalkPose | null>;
+}>(function CameraRig({ data, insetsRef, onUserInteract, onViewChange, fogColor, walking, walkPose }, ref) {
   // Panellar o'lchami ref orqali: Canvas ichidagi komponent kechroq yangilanadi, ref esa doim hozirgi qiymatda
   const insets = insetsRef.current;
   const { camera, size, invalidate, gl, scene } = useThree();
@@ -292,6 +296,25 @@ const CameraRig = forwardRef<MapApi, {
     return () => { c.dispose(); ctl.current = null; };
   }, [cam, gl, connected]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Yurish rejimi: xarita imo-ishoralari o'chadi (kamerani Walker boshqaradi). Chiqishda — personaj turgan joydan
+  // xarita ko'rinishiga silliq uzoqlashamiz
+  useEffect(() => {
+    const c = ctl.current;
+    if (!c) return;
+    if (walking) {
+      anim.current = null;
+      c.setEnabled(false);
+      return;
+    }
+    c.setEnabled(true);
+    const p = walkPose.current;
+    if (!p) return;
+    walkPose.current = null;
+    touched.current = true;
+    c.set({ tx: p.x, tz: p.z, dist: p.dist, polar: p.polar, az: p.az });
+    animateTo({ ...c.view, dist: 70, polar: Math.min(c.view.polar, POLAR) });
+  }, [walking]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Birinchi ochilish va o'lcham/panel o'zgarishi: foydalanuvchi hali tegmagan bo'lsa — parkni sig'diramiz
   useEffect(() => {
     const home = homeView();
@@ -423,6 +446,7 @@ function DevExpose() {
 
 export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(props, ref) {
   const { data, pois, selectedId, onSelect, route, showTrees, insets, user, onUserInteract, onViewChange, lampsLit = true } = props;
+  const walkPose = useRef<WalkPose | null>(null);
   const insetsRef = useRef(insets);
   insetsRef.current = insets;
   const theme = useThemeName();
@@ -469,7 +493,7 @@ export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(p
       <RubberSurfaces data={data} pal={pal} />
       <Fences data={data} pal={pal} />
       <PlaygroundEquipment />
-      <Decor />
+      <Decor pal={pal} lamps={data.lamps} night={theme === 'dark'} lampsLit={lampsLit} />
       <Fountains data={data} />
       <Bridges data={data} pal={pal} />
       <Buildings data={data} pal={pal} selectedId={selectedId} onSelect={select} />
@@ -481,7 +505,9 @@ export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(p
 
       {user && <UserMarker fix={user} />}
 
-      <CameraRig ref={ref} data={data} insetsRef={insetsRef} onUserInteract={onUserInteract} onViewChange={onViewChange} fogColor={pal.base} />
+      <CameraRig ref={ref} data={data} insetsRef={insetsRef} onUserInteract={onUserInteract} onViewChange={onViewChange} fogColor={pal.base}
+        walking={!!props.walk} walkPose={walkPose} />
+      {props.walk && <Walker data={data} input={props.walk.input} pose={walkPose} accent={props.walk.accent} />}
       <ShadowThrottle hz={RENDER.shadowUpdatesPerSecond} />
       {import.meta.env.DEV && <DevExpose />}
     </Canvas>

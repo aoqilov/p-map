@@ -401,6 +401,22 @@ function makeWaterMaterial(area: Area, style: WaterStyle, lamps: [number, number
   return { mat, uniforms, field };
 }
 
+/** Mavzu ranglari, kun/tun, fonuslar va tanlov → suv uniformlari */
+function applyWaterTheme(u: WaterUniforms, pal: Palette, style: WaterStyle, night: boolean, lampOn: boolean, selected: boolean) {
+  const c = pal.water[style];
+  u.uShallow.value.set(c.shallow);
+  u.uDeep.value.set(c.deep);
+  u.uRim.value.set(c.rim);
+  u.uSky.value.set(pal.waterSky);
+  u.uGlintColor.value.set(pal.glint);
+  u.uGlint.value = night ? 0.12 : 1;
+  u.uSelect.value = selected ? 1 : 0;
+  u.uSelectColor.value.set(pal.selected);
+  u.uLampOn.value = lampOn ? 1 : 0;
+  u.uFxDeep.value.set(pal.poolMosaic);
+  u.uFxTeal.value.set(pal.poolMosaicTeal);
+}
+
 const isTap = (e: ThreeEvent<MouseEvent>) => e.delta < 6;
 
 function WaterBody({ area, pal, selected, onSelect, lamps, time, lampOn, night, tex, fx }: {
@@ -419,21 +435,7 @@ function WaterBody({ area, pal, selected, onSelect, lamps, time, lampOn, night, 
   }, [surface, bank, water]);
 
   // Mavzu, tanlash va fonuslar o'zgarganda faqat uniformlar yangilanadi (shader qayta yig'ilmaydi)
-  useLayoutEffect(() => {
-    const c = pal.water[style];
-    const u = water.uniforms;
-    u.uShallow.value.set(c.shallow);
-    u.uDeep.value.set(c.deep);
-    u.uRim.value.set(c.rim);
-    u.uSky.value.set(pal.waterSky);
-    u.uGlintColor.value.set(pal.glint);
-    u.uGlint.value = night ? 0.12 : 1;
-    u.uSelect.value = selected ? 1 : 0;
-    u.uSelectColor.value.set(pal.selected);
-    u.uLampOn.value = lampOn ? 1 : 0;
-    u.uFxDeep.value.set(pal.poolMosaic);
-    u.uFxTeal.value.set(pal.poolMosaicTeal);
-  }, [pal, style, water, selected, lampOn, night]);
+  useLayoutEffect(() => applyWaterTheme(water.uniforms, pal, style, night, lampOn, selected), [pal, style, water, selected, lampOn, night]);
 
   const c = pal.water[style];
   return (
@@ -448,6 +450,44 @@ function WaterBody({ area, pal, selected, onSelect, lamps, time, lampOn, night, 
       </mesh>
     </group>
   );
+}
+
+/** Suv sirti — kontur (park koordinatasi) va balandligi. Bezaklar ichidagi suv uchun (sharshara hovuzchalari) */
+export interface WaterSurfaceDef { id: string; poly: Poly; level: number }
+
+/**
+ * Bezak ichidagi suv sirtlari (masalan, sharshara hovuzchalari): hovuz bilan bir xil shader — rang, to'lqin,
+ * qirg'oq bo'yidagi ko'pik, quyosh yaltirog'i, kechasi fonus aksi. Bosilmaydi, qirg'oq devori chizilmaydi (model o'zida).
+ */
+export function WaterSurfaces({ surfaces, style = 'pond', pal, lamps, night, lampsLit }: {
+  surfaces: WaterSurfaceDef[]; style?: WaterStyle; pal: Palette; lamps: [number, number][]; night: boolean; lampsLit: boolean;
+}) {
+  const time = useMemo<THREE.IUniform<number>>(() => ({ value: 0 }), []);
+  const animate = WATER.animate && !prefersReducedMotion();
+  useAmbientFrames(animate);
+  useFrame((st) => { if (animate) time.value = st.clock.elapsedTime; });
+  const lampOn = WATER.lampReflections && night && lampsLit;
+  return (
+    <>
+      {surfaces.map((w) => (
+        <WaterSurface key={w.id} w={w} style={style} pal={pal} lamps={lamps} time={time} night={night} lampOn={lampOn} />
+      ))}
+    </>
+  );
+}
+
+const noRaycast = () => {};
+
+function WaterSurface({ w, style, pal, lamps, time, night, lampOn }: {
+  w: WaterSurfaceDef; style: WaterStyle; pal: Palette; lamps: [number, number][]; time: THREE.IUniform<number>;
+  night: boolean; lampOn: boolean;
+}) {
+  const area = useMemo<Area>(() => ({ id: w.id, name: w.id, poly: w.poly }), [w]);
+  const geom = useMemo(() => flat(polyToShape(area.poly)), [area]);
+  const water = useMemo(() => makeWaterMaterial(area, style, lamps, time), [area, style, lamps, time]);
+  useEffect(() => () => { geom.dispose(); water.mat.dispose(); water.field.tex.dispose(); }, [geom, water]);
+  useLayoutEffect(() => applyWaterTheme(water.uniforms, pal, style, night, lampOn, false), [pal, style, water, lampOn, night]);
+  return <mesh geometry={geom} material={water.mat} rotation={LIE_FLAT} position-y={w.level} receiveShadow raycast={noRaycast} />;
 }
 
 export function Water({ data, pal, selectedId, onSelect, night, lampsLit }: {

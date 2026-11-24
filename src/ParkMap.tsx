@@ -7,6 +7,8 @@ import { distToPoly } from './map/geo';
 import type { XY } from './map/projection';
 import type { ParkData, Poi } from './map/types';
 import { telegramLocation, useUserLocation } from './map/useUserLocation';
+import type { WalkInput } from './map/Walker';
+import { Joystick } from './Joystick';
 
 const data = parkJson as unknown as ParkData;
 const router = createRouter(data.graph);
@@ -104,6 +106,24 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
   const [showTrees, setShowTrees] = useState(true);
   const [lampsLit, setLampsLit] = useState(STREET_LAMP.lightsOn);
   // Pritsel: ekran markazidagi nuqtaning park koordinatasi (metr) — explication.py (PAD_AT, NAME_AT) uchun
+  // 3-shaxs yurish rejimi: personaj parkda yuradi, kamera orqasidan (joystik / WASD)
+  const [walk, setWalk] = useState(false);
+  const walkInput = useRef<WalkInput>({ x: 0, y: 0 });
+  const walkProp = useMemo(() => ({ input: walkInput, accent: '#2f80ff' }), []);
+  const [walkHint, setWalkHint] = useState(false);
+  const toggleWalk = () => {
+    setWalk((on) => {
+      const next = !on;
+      walkInput.current = { x: 0, y: 0 };
+      if (next) { setFollow(false); setAim(false); setWalkHint(true); }
+      return next;
+    });
+  };
+  useEffect(() => {
+    if (!walkHint) return;
+    const t = setTimeout(() => setWalkHint(false), 5000);
+    return () => clearTimeout(t);
+  }, [walkHint]);
   const [aim, setAim] = useState(false);
   const [aimXY, setAimXY] = useState<[number, number] | null>(null);
   const [aimCopied, setAimCopied] = useState(false);
@@ -288,8 +308,16 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
           user={me}
           onUserInteract={() => setFollow(false)}
           onViewChange={setView}
+          walk={walk ? walkProp : null}
         />
       </div>
+
+      {walk && <Joystick value={walkInput} bottom={bottomH + 24} />}
+      {walk && walkHint && (
+        <button type="button" className="walk-hint" onClick={() => setWalkHint(false)}>
+          Joystik bilan yuring · ekranni suring — atrofga qarang · ikki barmoq — yaqin/uzoq
+        </button>
+      )}
 
       {aim && (
         <div className="aim">
@@ -399,6 +427,11 @@ export default function ParkMap({ mode, features }: ParkMapProps) {
         )}
         <button type="button" onClick={() => map.current?.reset()} aria-label="Butun parkni ko'rsatish">
           <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
+        </button>
+        <button type="button" className={`walk-btn${walk ? ' is-on' : ''}`} onClick={toggleWalk} aria-pressed={walk}
+          aria-label={walk ? "Yurish rejimidan chiqish" : "Parkni aylanib chiqish (3-shaxs)"}
+          title={walk ? "Yurish rejimidan chiqish" : "Parkni aylanib chiqish (3-shaxs)"}>
+          <svg viewBox="0 0 24 24"><circle className="fill" cx="13" cy="4" r="2" /><path d="M10 21l2-6 3 3v3M9 11l3-3 3 2 3 1M12 8l-1 5" /></svg>
         </button>
         <button type="button" className={`aim-btn${aim ? ' is-on' : ''}`} onClick={() => setAim((v) => !v)}
           aria-pressed={aim} aria-label="Pritsel: markazdagi nuqta koordinatasi" title="Pritsel: markazdagi nuqta koordinatasi">

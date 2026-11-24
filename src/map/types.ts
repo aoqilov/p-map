@@ -12,6 +12,8 @@ export interface Building {
   height: number;
   /** O'z rangi (tom va devor), masalan tir — qizil. Berilmasa — mavzudagi bino rangi */
   color?: string;
+  /** Ko'rinishi — 3D model (src/decor/*), quti chizilmaydi: faqat bosish va to'siq uchun */
+  model?: boolean;
 }
 
 export interface Area {

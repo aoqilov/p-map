@@ -85,6 +85,19 @@ export class MapGestures {
   private orbitAcc = { x: 0, y: 0 };
   /** Ekran nuqtasida bosiladigan obyekt bormi (kursor "qo'l" bo'lishi uchun) */
   hoverTest: ((x: number, y: number) => boolean) | null = null;
+  /** O'chiq bo'lsa (masalan, 3-shaxs yurish rejimi) — imo-ishoralarni tinglamaydi */
+  private enabled = true;
+  setEnabled(on: boolean) {
+    if (on === this.enabled) return;
+    this.enabled = on;
+    this.ptrs.clear();
+    this.captured.clear();
+    this.mode = 'none';
+    this.two = null;
+    this.mouseDrag = false;
+    cancelAnimationFrame(this.fling);
+    this.refreshCursor();
+  }
 
   constructor(
     private cam: THREE.PerspectiveCamera,
@@ -223,6 +236,7 @@ export class MapGestures {
   private onContext = (e: Event) => e.preventDefault();
 
   private onDown = (e: PointerEvent) => {
+    if (!this.enabled) return;
     cancelAnimationFrame(this.fling);
     const p = this.local(e);
     this.ptrs.set(e.pointerId, { ...p, type: e.pointerType });
@@ -251,6 +265,7 @@ export class MapGestures {
   }
 
   private onMove = (e: PointerEvent) => {
+    if (!this.enabled) return;
     const old = this.ptrs.get(e.pointerId);
     if (!old) {
       // Tugmasiz harakat (sichqoncha): ostida bosiladigan obyekt bo'lsa — qo'l kursor
@@ -326,6 +341,7 @@ export class MapGestures {
   };
 
   private onUp = (e: PointerEvent) => {
+    if (!this.enabled) { this.ptrs.delete(e.pointerId); return; }
     const had = this.ptrs.get(e.pointerId);
     this.ptrs.delete(e.pointerId);
     if (this.captured.delete(e.pointerId)) { try { this.dom.releasePointerCapture(e.pointerId); } catch { /* */ } }
@@ -372,6 +388,7 @@ export class MapGestures {
   };
 
   private onWheel = (e: WheelEvent) => {
+    if (!this.enabled) return;
     e.preventDefault();
     cancelAnimationFrame(this.fling);
     this.cb.start();
@@ -386,6 +403,7 @@ export class MapGestures {
   };
 
   private onDbl = (e: MouseEvent) => {
+    if (!this.enabled) return;
     const p = this.local(e);
     this.cb.zoomTap(p.x, p.y);
   };
