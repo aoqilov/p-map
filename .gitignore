@@ -9,3 +9,6 @@ __pycache__/
 src/attractions/*/preview*.png
 src/attractions/*/preview/
 src/decor/*/preview*.png
+
+.vercel
+.env*

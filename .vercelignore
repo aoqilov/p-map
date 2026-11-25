@@ -1,0 +1,7 @@
+# Vercel'ga yuklanmaydi: build uchun kerak emas (Blender manbalari, gen plan PDF, attraksion rasmlari, bitta-fayl buildlar)
+*.blend
+*.blend1
+yana-reference/
+attraction-images-park/
+dist-demo/
+dist-client/
