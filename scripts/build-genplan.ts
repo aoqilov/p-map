@@ -285,20 +285,41 @@ extraDefs.forEach((d, i) => {
   buildings.push({ id: d.id, name: d.name, poly: extraPolys[i], height: d.height, model: true });
   if (d.category) pending.push({ props: { layer: 'building', name: d.name, category: d.category }, id: d.id, anchor: d.at, elevation: d.height });
 });
+/** Ko'chirilgan plan binolari (PlanModelDef.move): marshrut ular orqali o'tmaydi */
+const movedPolys: Poly[] = [];
+const ringCenter = (ring: XY[]): XY => {
+  let a = 0, cx = 0, cy = 0;
+  for (let i = 0; i < ring.length - 1; i++) {
+    const f = ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
+    a += f; cx += (ring[i][0] + ring[i + 1][0]) * f; cy += (ring[i][1] + ring[i + 1][1]) * f;
+  }
+  return [cx / (3 * a), cy / (3 * a)];
+};
 for (const m of planModels) {
   const b = buildings.find((x) => x.id === m.plan);
-  if (b) b.model = true;
-  else console.warn(`⚠ Model: plandagi "${m.plan}" bino topilmadi`);
+  if (!b) { console.warn(`⚠ Model: plandagi "${m.plan}" bino topilmadi`); continue; }
+  b.model = true;
+  if (m.move) {
+    // izni model joyiga surish (shakli va burilishi o'zgarmaydi); pin ham shuncha siljiydi
+    const c = ringCenter(b.poly[0]);
+    const dx = m.at[0] - c[0], dy = m.at[1] - c[1];
+    b.poly = b.poly.map((ring) => ring.map(([x, y]): XY => [r2(x + dx), r2(y + dy)]));
+    for (const pe of pending) if (pe.id === m.plan) pe.anchor = [r2(pe.anchor[0] + dx), r2(pe.anchor[1] + dy)];
+    movedPolys.push(b.poly);
+  }
 }
 if (planModels.length) console.log(`✓ Plan binolariga model: ${planModels.map((m) => m.plan).join(', ')}`);
 if (extraDefs.length) console.log(`✓ Bezak-binolar: ${extraDefs.map((d) => d.name).join(', ')}`);
 
+/** Planda yo'q attraksionlar id (daraxtlar ulardan keyin alohida tozalanadi) */
+const placedIds = new Set<string>();
 // Planda yo'q attraksionlar: maydoncha izi — to'rtburchak; pin, qidiruv, to'siq va daraxtsiz zona — boshqa attraksionlardagidek
 for (const a of placedAttractions) {
   const footprint = rectAround(a.at, a.bearing, a.width, a.depth);
   const id = a.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `attraction-${attractions.length + 1}`;
   if (usedIds.has(id)) throw new Error(`Attraksion id takrorlandi: ${id} (${a.name})`);
   usedIds.add(id);
+  placedIds.add(id);
   attractions.push({ id, name: a.name, at: a.at, size: sizeFor(2 * Math.sqrt(area(footprint) / Math.PI)), bearing: a.bearing, height: a.height,
     num: null, footprint });
   pending.push({ props: { layer: 'attraction', name: a.name, category: a.category ?? 'fun' }, id, anchor: a.at, elevation: a.height + 1 });
@@ -328,6 +349,7 @@ for (const f of layer('path')) {
   for (let k = 0; k < pts.length - 1; k++) {
     if (inCut(pts[k], pts[k + 1])) continue; // sharshara o'rnidagi yo'l — marshrut yo'q
     if (crossesHedge(pts[k], pts[k + 1])) { hedgeCuts++; continue; } // buta orqali o'tmaydi
+    if (movedPolys.some((pp) => [0, 0.25, 0.5, 0.75, 1].some((t) => inPoly([pts[k][0] + (pts[k + 1][0] - pts[k][0]) * t, pts[k][1] + (pts[k + 1][1] - pts[k][1]) * t], pp)))) continue; // ko'chirilgan bino ichidan o'tmaydi
     const a = nodeId(pts[k]), b = nodeId(pts[k + 1]);
     if (a === b) continue;
     const key = a < b ? `${a}-${b}` : `${b}-${a}`;
@@ -409,7 +431,8 @@ const blockers: { poly: Poly; gap: number; box: ReturnType<typeof bbox> }[] = [
   ...roads.map((poly) => ({ poly, gap: 2 })),
   ...waterAreas.map((a) => ({ poly: a.poly, gap: 2 })),
   ...buildings.map((b) => ({ poly: b.poly, gap: 2.5 })),
-  ...attractions.map((a) => ({ poly: a.footprint!, gap: 2.5 })),
+  // planda yo'q attraksionlar bu yerda emas: ular daraxtlar yasalgandan keyin tozalanadi (boshqa daraxtlar siljimasin)
+  ...attractions.filter((a) => !placedIds.has(a.id)).map((a) => ({ poly: a.footprint!, gap: 2.5 })),
   ...playgrounds.map((a) => ({ poly: a.poly, gap: 1 })),
   ...parking.map((a) => ({ poly: a.poly, gap: 1.5 })),
 ].map((b) => ({ ...b, box: bbox(b.poly) }));
@@ -451,6 +474,17 @@ for (const grove of TREE_GROVES) {
     added++;
   }
   console.log(`✓ Daraxtzor "${grove.id}": +${added} ta katta daraxt`);
+}
+// Planda yo'q attraksionlar (masalan, maysazordagi RC Park) ichidagi va chetidan 1 m gacha bo'lgan daraxtlar olib tashlanadi
+{
+  const placed = attractions.filter((a) => placedIds.has(a.id)).map((a) => ({ poly: a.footprint!, box: bbox(a.footprint!) }));
+  const before = trees.length;
+  for (let i = trees.length - 1; i >= 0; i--) {
+    const p: XY = [trees[i][0], trees[i][1]];
+    if (placed.some((k) => p[0] > k.box.minX - 1 && p[0] < k.box.maxX + 1 && p[1] > k.box.minY - 1 && p[1] < k.box.maxY + 1 &&
+      (inPoly(p, k.poly) || distToPoly(p, k.poly) < 1))) trees.splice(i, 1);
+  }
+  if (before !== trees.length) console.log(`✓ Attraksion maydonchalaridan ${before - trees.length} ta daraxt olib tashlandi`);
 }
 
 // ---------- Fonuslar: markaz chiziqlari bo'ylab har ~30 m, yo'l chetiga (maysa tomonga) ----------

@@ -74,4 +74,9 @@ export interface PlanModelDef {
   at: XY;
   /** Eshigi qaragan yo'nalish, gradus */
   bearing: number;
+  /**
+   * true — plandagi bino izi `at` ga suriladi (model plandagi joydan boshqa joyda turadi): pin, to'siq va bosish joyi
+   * ham birga ko'chadi, marshrut ko'chirilgan bino orqali o'tmaydi. Berilmasa — iz plandagi joyida qoladi
+   */
+  move?: boolean;
 }

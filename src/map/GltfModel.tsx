@@ -10,6 +10,7 @@
 // qilib yuklaydi — bo'laklar qayta harakatlantirilmasin.
 //   wheel   — charxpalak g'ildiragi: o'z gorizontal o'qi (lokal Z) atrofida aylanadi;
 //             uning bolalari cabin<N> teskari buriladi — kabinalar doim tik osilib turadi
+//   tour<N> — o'z yo'lida navbat bilan aylanib keladi (anim.tour, masalan Baby Car ijara mashinalari; yo'llar — tours.json)
 //   car<N>  — trassa bo'ylab yuradi (anim.follow, masalan Speady coaster poyezdi; trassa — model.py yozgan track.json);
 //             follow.independent — vagonlar ulanmagan, har biri o'zi yuradi (Cyclon)
 // Tezlik va balandlik config.ts da (masalan, AIR_RACE). Tanlangan holat pin bilan ko'rsatiladi.
@@ -30,6 +31,8 @@ export interface GltfAnimation {
   lift?: { meters: number; seconds: number; stagger?: number };
   /** `car*` qismlari trassa bo'ylab yuradi */
   follow?: FollowAnimation;
+  /** Mashinalar navbat bilan o'z yo'lida aylanib keladi (TourAnimation) */
+  tour?: TourAnimation;
   /** `spin*` qismlari o'z o'qi (tik) atrofida aylanadi: daqiqasiga aylanishlar soni (0 — to'xtagan) */
   spin?: { rpm: number };
   /**
@@ -79,6 +82,22 @@ export interface TrackData {
   cars: { name: string; offset: number }[];
   /** Bekat: trassa boshidan masofa, m (poyezd shu yerda to'xtaydi) */
   station: number;
+}
+
+/**
+ * Navbatli sayr (masalan, Baby Car ijara mashinalari): har bir mashina (`name` tuguni, lokal +X — oldi) o'z yo'lida —
+ * turgan joyidan chiqadi, aylanib keladi va joyiga qaytadi. Bir vaqtda faqat bittasi yuradi, qolganlari joyida turadi.
+ * points — glTF koordinatalari (model.py yozadi), yo'l boshi va oxiri — mashina turgan joy;
+ * back — yo'l boshidan shu masofadan keyin mashina orqaga yuradi (joyiga orqasi bilan kiradi), m
+ */
+export interface TourAnimation {
+  tours: { name: string; points: number[][]; back: number }[];
+  /** Oldinga tezlik, m/s */
+  speed: number;
+  /** Orqaga yurish tezligi, m/s (berilmasa — speed / 2) */
+  reverseSpeed?: number;
+  /** Bir mashina qaytgach, keyingisi jo'nagunicha kutish, soniya */
+  pause?: number;
 }
 
 export interface FollowAnimation {
@@ -183,8 +202,49 @@ export function useModelAnimation(root: THREE.Object3D, anim: GltfAnimation) {
       if (anim.follow?.independent) parts.cars.forEach(({ node }, i) => placeCar(node, fleet.current[i]?.s ?? s));
       else for (const { node, offset } of parts.cars) placeCar(node, s - offset);
     };
-    // Animatsiya o'chiq bo'lsa ham vagonlar trassada (bekatda) tursin
-    useLayoutEffect(() => placeCars(train.current.s), [parts]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Navbatli sayr (anim.tour): har bir mashinaning o'z yo'li va jadvali (yo'l vaqti, orqaga yurish chegarasi)
+    const tours = useMemo(() => {
+      const tr = anim.tour;
+      if (!tr) return null;
+      const rev = tr.reverseSpeed ?? tr.speed / 2;
+      const list = tr.tours.map((d) => {
+        const node = root.getObjectByName(d.name);
+        if (!node) return null;
+        const path = trackSampler(d.points);
+        const back = Math.min(d.back, path.total);
+        return { node, path, back, time: back / tr.speed + (path.total - back) / rev };
+      }).filter((x): x is NonNullable<typeof x> => !!x);
+      const pause = tr.pause ?? 0;
+      return { list, rev, pause, cycle: list.reduce((s, x) => s + x.time + pause, 0) };
+    }, [root]); // eslint-disable-line react-hooks/exhaustive-deps
+    /** Mashinani yo'lning d masofasiga qo'yish; reverse — orqaga yurmoqda (oldi harakatga teskari) */
+    const placeTour = (node: THREE.Object3D, path: ReturnType<typeof trackSampler>, d: number, reverse: boolean) => {
+      // bir tomonlama urinma (yo'l boshi va oxiri bir joyda — ikki tomonlama urinma bu yerda chalkashadi)
+      const a = Math.max(0, Math.min(d, path.total - 0.5)), b = Math.min(path.total - 0.01, a + 0.5);
+      path.at(a, tmp.b);
+      path.at(b, tmp.a).sub(tmp.b);
+      path.at(d, tmp.p);
+      node.position.copy(tmp.p);
+      node.rotation.set(0, Math.atan2(-tmp.a.z, tmp.a.x) + (reverse ? Math.PI : 0), 0);
+    };
+    const placeTours = (time: number) => {
+      if (!tours || !tours.list.length) return;
+      let tc = tours.cycle > 0 ? time % tours.cycle : 0;
+      for (const x of tours.list) {
+        const run = tc >= 0 && tc < x.time;
+        let d = 0, reverse = false;
+        if (run) {
+          const fwd = x.back / anim.tour!.speed;
+          if (tc < fwd) d = tc * anim.tour!.speed;
+          else { d = x.back + (tc - fwd) * tours.rev; reverse = true; }
+        }
+        placeTour(x.node, x.path, d, reverse);
+        tc -= x.time + tours.pause;
+      }
+    };
+
+    // Animatsiya o'chiq bo'lsa ham vagonlar trassada (bekatda), sayr mashinalari joyida tursin
+    useLayoutEffect(() => { placeCars(train.current.s); placeTours(0); }, [parts]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const spins = (anim.secondsPerTurn ?? 0) > 0 && !!parts.rotor;
     const lifts = (anim.lift?.meters ?? 0) > 0 && parts.lifts.length > 0;
@@ -193,7 +253,8 @@ export function useModelAnimation(root: THREE.Object3D, anim: GltfAnimation) {
     const swings = ((anim.swing?.degrees ?? 0) > 0 || (anim.swing?.lean ?? 0) > 0) && parts.swingers.length > 0;
     const tilting = (anim.tilt?.degrees ?? 0) > 0 && parts.tilts.length > 0;
     const wheeling = (anim.wheel?.secondsPerTurn ?? 0) > 0 && !!parts.wheel;
-    const animate = (spins || lifts || follows || props || swings || tilting || wheeling) && !prefersReducedMotion();
+    const touring = !!tours && tours.list.length > 0 && (anim.tour?.speed ?? 0) > 0;
+    const animate = (spins || lifts || follows || props || swings || tilting || wheeling || touring) && !prefersReducedMotion();
     useAmbientFrames(animate);
 
     const t = useRef(0);
@@ -234,6 +295,7 @@ export function useModelAnimation(root: THREE.Object3D, anim: GltfAnimation) {
         parts.wheel.rotation.z = a;
         for (const c of parts.cabins) c.rotation.z = -a;
       }
+      if (touring) placeTours(t.current);
       if (props && anim.spin) {
         const da = (anim.spin.rpm / 60) * Math.PI * 2 * dt;
         for (const n of parts.spinners) n.rotation.y = (n.rotation.y + da) % (Math.PI * 2);
