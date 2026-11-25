@@ -155,8 +155,9 @@ class Kit:
         ob.data.set_sharp_from_angle(angle=math.radians(50))
         return ob
 
-    def finish(self, tag, parts, here: Path, cams):
-        """Bitta `base` obyekt → model.blend, model.glb; Workbench preview(lar). cams: [(fayl, kamera joyi, qaragan nuqta)]"""
+    def finish(self, tag, parts, here: Path, cams, name='model'):
+        """Bitta `base` obyekt → <name>.blend, <name>.glb; Workbench preview(lar). cams: [(fayl, kamera joyi, qaragan nuqta)].
+        name — bir papkada bir nechta model bo'lsa (masalan, ikki xil uzunlikdagi tunnel)"""
         argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
         preview_dir = Path(argv[0]) if argv else here
         base = self.join('base', parts)
@@ -165,9 +166,9 @@ class Kit:
         ys = [v.co.y for v in base.data.vertices]
         zs = [v.co.z for v in base.data.vertices]
         print(f'{tag} tris={tris} x={min(xs):.2f}..{max(xs):.2f} y={min(ys):.2f}..{max(ys):.2f} top={max(zs):.2f}')
-        bpy.ops.wm.save_as_mainfile(filepath=str(here / 'model.blend'))
-        bpy.ops.export_scene.gltf(filepath=str(here / 'model.glb'), export_format='GLB', export_apply=True, export_yup=True)
-        print(f'{tag} glb={(here / "model.glb").stat().st_size // 1024} KB')
+        bpy.ops.wm.save_as_mainfile(filepath=str(here / f'{name}.blend'))
+        bpy.ops.export_scene.gltf(filepath=str(here / f'{name}.glb'), export_format='GLB', export_apply=True, export_yup=True)
+        print(f'{tag} glb={(here / f"{name}.glb").stat().st_size // 1024} KB')
 
         scene = self.scene
         cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam'))
