@@ -43,3 +43,24 @@ export function distToPoly(p: XY, poly: Poly) {
   for (const ring of poly) for (let i = 0; i < ring.length - 1; i++) d = Math.min(d, distToSeg(p, ring[i], ring[i + 1]));
   return d;
 }
+
+/** Siniq chiziqni silliqlash (Chaikin, uchlari joyida qoladi): qo'lda chizilgan chiziq burchaklari yumaloqlanadi */
+export function smoothLine(line: XY[], iterations = 2): XY[] {
+  let pts = line;
+  for (let it = 0; it < iterations; it++) {
+    const out: XY[] = [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [a, b] = [pts[i], pts[i + 1]];
+      out.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    out.push(pts[pts.length - 1]);
+    pts = out;
+  }
+  return pts;
+}
+
+/** Ikki kesma kesishadimi (a1–a2 va b1–b2) */
+export function segmentsCross(a1: XY, a2: XY, b1: XY, b2: XY) {
+  const d = (p: XY, q: XY, r: XY) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  return d(a1, a2, b1) * d(a1, a2, b2) < 0 && d(b1, b2, a1) * d(b1, b2, a2) < 0;
+}

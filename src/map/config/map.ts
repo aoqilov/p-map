@@ -1,5 +1,6 @@
 // Xarita sahnasi: attraksion o'lcham sinflari, fonuslar, yo'l qoplamasi, suv, baliqlar, render, joylashuv
 import type { FishFigure } from '../figures';
+import type { XY } from '../projection';
 
 /**
  * Attraksion o'lcham sinflari. Model o'z proporsiyasini saqlagan holda shu "quti" ichiga sig'diriladi:
@@ -181,6 +182,35 @@ export const WATER_RIDES: Record<string, { rim: number; channel: number; boats: 
  * tugaydigan yo'l uchlari (chegaradan `gateReach` m ichida) — shu joyda `gateWidth` m ochiq qoladi.
  * `skip` — shu raqamli obyekt bilan umumiy chegarada panjara qo'yilmaydi (u yerda boshqa obyektning panjarasi bor).
  */
+/**
+ * Jonli devor — yashil buta to'siq (Hedges.tsx). `line` — o'rta chizig'i, park metrlari [x, y] (qo'lda chizilgan chiziq:
+ * xaritada silliqlanadi). Yurish rejimida to'siq, marshrut undan o'tmaydi (o'zgartirgach: npm run build:genplan).
+ */
+export interface HedgeDef { id: string; height: number; width: number; line: XY[] }
+export const HEDGES: HedgeDef[] = [
+  {
+    // Shimoliy chegara: chap maysazor uchini aylanib, uzun maysa yo'lagi shimolidan yozgi sahna ortigacha, park chegarasigacha
+    id: 'shimoliy-buta',
+    height: 3,
+    width: 1.2,
+    line: [
+      [-54.25, 198.34], [-51.65, 195.36], [-50.39, 192.16], [-48.81, 191.1], [-46.3, 192.14], [-43.7, 194.57],
+      [-38.36, 193.78], [-31.66, 192.49], [-22.02, 191.05], [-9.4, 188.95], [4.63, 187.17], [20.6, 185.89],
+      [35.22, 185.35], [45.0, 185.2],
+    ],
+  },
+];
+
+/**
+ * Qo'shimcha daraxtzor: `at` atrofidagi `radius` m ichidagi maysazorlarga zichroq va kattaroq daraxtlar (build:genplan).
+ * Oddiy daraxtlar o'zgarmaydi — bular ustiga qo'shiladi. spacing — daraxtlar orasidagi eng kam masofa, m;
+ * scale — o'lcham oralig'i (oddiy daraxtlar 0.8–1.3).
+ */
+export const TREE_GROVES: { id: string; at: XY; radius: number; spacing: number; scale: [number, number] }[] = [
+  // Sharli fontan atrofidagi to'rt maysazor (src/decor/sharli-fontan) — katta soyali daraxtlar
+  { id: 'sharli-fontan', at: [-20.9, 129.95], radius: 24, spacing: 3.9, scale: [1.3, 1.75] },
+];
+
 export const FENCES: Record<string, {
   height: number; gateWidth: number; gateReach: number; skip?: string[];
   /** Rang kaliti (theme.ts): 'fence' — to'q yashil, 'fenceYellow' — sariq */

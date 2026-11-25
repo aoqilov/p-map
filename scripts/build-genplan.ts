@@ -12,11 +12,12 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as turf from '@turf/turf';
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Point, Polygon, Position, LineString } from 'geojson';
-import { ATTRACTION_SIZES, FENCES, KASSA, WATER_RIDES, type AttractionSize, type Category } from '../src/map/config';
+import { ATTRACTION_SIZES, FENCES, HEDGES, KASSA, TREE_GROVES, WATER_RIDES, type AttractionSize, type Category } from '../src/map/config';
 import { project, unproject, type XY } from '../src/map/projection';
 import type { Area, Attraction, Bridge, Building, MultiPoly, ParkData, Poi, Poly } from '../src/map/types';
-import { distToBoundary, distToPoly, inPoly } from '../src/map/geo';
+import { distToBoundary, distToPoly, inPoly, segmentsCross, smoothLine } from '../src/map/geo';
 import type { BuildingDef, PlanModelDef } from '../src/decor/define';
+import type { AttractionPlaceDef } from '../src/attractions/define';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const SRC = path.join(ROOT, 'data/genplan/genplan.geojson');
@@ -112,7 +113,16 @@ for (const dir of fs.readdirSync(DECOR_DIR).sort()) {
     else extraDefs.push(d);
   }
 }
-/** Bino izi: markaz, old yo'nalish (bearing), eni × chuqurligi → to'rtburchak (yoki doira — shape: 'circle') */
+/** To'rtburchak iz: markaz, old yo'nalish (bearing), eni (old tomon bo'ylab) × chuqurligi */
+const rectAround = (at: XY, bearing: number, width: number, depth: number): Poly => {
+  const b = (bearing * Math.PI) / 180;
+  const f: XY = [Math.sin(b), Math.cos(b)], r: XY = [Math.cos(b), -Math.sin(b)];
+  const pt = (sx: number, sy: number): XY =>
+    [r2(at[0] + r[0] * sx * width / 2 + f[0] * sy * depth / 2), r2(at[1] + r[1] * sx * width / 2 + f[1] * sy * depth / 2)];
+  const ring = [pt(-1, -1), pt(1, -1), pt(1, 1), pt(-1, 1)];
+  return [[...ring, ring[0]]];
+};
+/** Bino izi: to'rtburchak (yoki doira — shape: 'circle') */
 const rectOf = (d: BuildingDef): Poly => {
   if (d.shape === 'circle') {
     const ring: XY[] = Array.from({ length: 32 }, (_, i) => {
@@ -121,19 +131,26 @@ const rectOf = (d: BuildingDef): Poly => {
     });
     return [[...ring, ring[0]]];
   }
-  const b = (d.bearing * Math.PI) / 180;
-  const f: XY = [Math.sin(b), Math.cos(b)], r: XY = [Math.cos(b), -Math.sin(b)];
-  const pt = (sx: number, sy: number): XY =>
-    [r2(d.at[0] + r[0] * sx * d.width / 2 + f[0] * sy * d.depth / 2), r2(d.at[1] + r[1] * sx * d.width / 2 + f[1] * sy * d.depth / 2)];
-  const ring = [pt(-1, -1), pt(1, -1), pt(1, 1), pt(-1, 1)];
-  return [[...ring, ring[0]]];
+  return rectAround(d.at, d.bearing, d.width, d.depth);
 };
+
+// ---------- Planda yo'q attraksionlar (src/attractions/*/place.ts): Ping pong va h.k. ----------
+const ATTRACTIONS_DIR = path.join(ROOT, 'src/attractions');
+const placedAttractions: AttractionPlaceDef[] = [];
+for (const dir of fs.readdirSync(ATTRACTIONS_DIR).sort()) {
+  const file = path.join(ATTRACTIONS_DIR, dir, 'place.ts');
+  if (!fs.existsSync(file)) continue;
+  placedAttractions.push(...[(await import(pathToFileURL(file).href)).default as AttractionPlaceDef | AttractionPlaceDef[]].flat());
+}
 const extraPolys = extraDefs.map(rectOf);
 /** Yo'l plitkasi o'rniga qo'yilgan bezaklar (sharshara): izi plitkadan kesiladi, marshrut u orqali o'tmaydi */
 const cutPolys = extraPolys.filter((_, i) => extraDefs[i].cutPaving);
 const cutF: PolyFeature[] = cutPolys.map((pp) => turf.polygon([pp[0].map(unproject)]));
 const inCut = (a: XY, b: XY) => cutPolys.some((pp) =>
   [0, 0.25, 0.5, 0.75, 1].some((t) => inPoly([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], pp)));
+/** Jonli devorlar (config/map.ts → HEDGES): ularni kesib o'tadigan yo'l qirrasi marshrutga kirmaydi */
+const hedgeLines = HEDGES.map((h) => smoothLine(h.line, 3));
+const crossesHedge = (a: XY, b: XY) => hedgeLines.some((l) => l.some((q, i) => i > 0 && segmentsCross(a, b, l[i - 1], q)));
 
 // ---------- Suv: eng kattasi — Hovuz (baliqlar shu yerda), kanal — Ariq, sharqdagi basseynlar — Basseyn ----------
 // Bezak-bino ostida qolgan suv (masalan, basseyn o'rniga tibbiyot xonasi) — olib tashlanadi
@@ -276,6 +293,18 @@ for (const m of planModels) {
 if (planModels.length) console.log(`✓ Plan binolariga model: ${planModels.map((m) => m.plan).join(', ')}`);
 if (extraDefs.length) console.log(`✓ Bezak-binolar: ${extraDefs.map((d) => d.name).join(', ')}`);
 
+// Planda yo'q attraksionlar: maydoncha izi — to'rtburchak; pin, qidiruv, to'siq va daraxtsiz zona — boshqa attraksionlardagidek
+for (const a of placedAttractions) {
+  const footprint = rectAround(a.at, a.bearing, a.width, a.depth);
+  const id = a.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `attraction-${attractions.length + 1}`;
+  if (usedIds.has(id)) throw new Error(`Attraksion id takrorlandi: ${id} (${a.name})`);
+  usedIds.add(id);
+  attractions.push({ id, name: a.name, at: a.at, size: sizeFor(2 * Math.sqrt(area(footprint) / Math.PI)), bearing: a.bearing, height: a.height,
+    num: null, footprint });
+  pending.push({ props: { layer: 'attraction', name: a.name, category: a.category ?? 'fun' }, id, anchor: a.at, elevation: a.height + 1 });
+}
+if (placedAttractions.length) console.log(`✓ Planda yo'q attraksionlar: ${placedAttractions.map((a) => a.name).join(', ')}`);
+
 // ---------- Marshrut grafi: markaz chiziqlari, umumiy uchlar bitta tugun ----------
 const nodes: XY[] = [];
 const grid = new Map<string, number[]>();
@@ -293,10 +322,12 @@ function nodeId(p: XY): number {
   return nodes.length - 1;
 }
 const edgeMap = new Map<string, [number, number, number]>();
+let hedgeCuts = 0;
 for (const f of layer('path')) {
   const pts = (f.geometry as LineString).coordinates.map(P);
   for (let k = 0; k < pts.length - 1; k++) {
     if (inCut(pts[k], pts[k + 1])) continue; // sharshara o'rnidagi yo'l — marshrut yo'q
+    if (crossesHedge(pts[k], pts[k + 1])) { hedgeCuts++; continue; } // buta orqali o'tmaydi
     const a = nodeId(pts[k]), b = nodeId(pts[k + 1]);
     if (a === b) continue;
     const key = a < b ? `${a}-${b}` : `${b}-${a}`;
@@ -320,6 +351,7 @@ for (const b of bridges) {
     if (best >= 0 && bd < 15) edgeMap.set(`${end}-${best}`, [end, best, r2(bd)]);
   }
 }
+if (HEDGES.length) console.log(`✓ Jonli devorlar: ${HEDGES.length} ta, marshrutdan ${hedgeCuts} qirra kesildi`);
 const edges = [...edgeMap.values()];
 const adj = nodes.map(() => [] as number[]);
 for (const [a, b] of edges) { adj[a].push(b); adj[b].push(a); }
@@ -399,6 +431,27 @@ for (const lawn of lawns) {
   }
 }
 console.log(`✓ Daraxtlar: ${trees.length}`);
+
+// Qo'shimcha daraxtzorlar (config/map.ts → TREE_GROVES): o'z tasodifiy sonlari bilan — oddiy daraxtlar o'zgarmaydi
+for (const grove of TREE_GROVES) {
+  let gs = [...grove.id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 7);
+  const grand = () => { gs = (gs * 16807 + 11) % 2147483647; if (gs <= 0) gs += 2147483646; return gs / 2147483647; };
+  const [gx, gy] = grove.at;
+  const near = lawns.filter((l) => { const b = bbox(l); return b.maxX > gx - grove.radius && b.minX < gx + grove.radius && b.maxY > gy - grove.radius && b.minY < gy + grove.radius; });
+  let added = 0;
+  for (let tries = 0; tries < 4000; tries++) {
+    const ang = grand() * Math.PI * 2, rr = grove.radius * Math.sqrt(grand());
+    const p: XY = [gx + Math.cos(ang) * rr, gy + Math.sin(ang) * rr];
+    const lawn = near.find((l) => inPoly(p, l));
+    if (!lawn || distToBoundary(p, lawn) < 1.4) continue;
+    if (blockers.some((k) => p[0] > k.box.minX - k.gap && p[0] < k.box.maxX + k.gap && p[1] > k.box.minY - k.gap &&
+      p[1] < k.box.maxY + k.gap && (inPoly(p, k.poly) || distToPoly(p, k.poly) < k.gap))) continue;
+    if (trees.some((t) => Math.hypot(t[0] - p[0], t[1] - p[1]) < grove.spacing)) continue;
+    trees.push([r2(p[0]), r2(p[1]), r2(grove.scale[0] + grand() * (grove.scale[1] - grove.scale[0]))]);
+    added++;
+  }
+  console.log(`✓ Daraxtzor "${grove.id}": +${added} ta katta daraxt`);
+}
 
 // ---------- Fonuslar: markaz chiziqlari bo'ylab har ~30 m, yo'l chetiga (maysa tomonga) ----------
 const LAMP_EVERY = 30;

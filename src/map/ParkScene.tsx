@@ -10,6 +10,7 @@ import { StreetLamps } from './StreetLamps';
 import { FlowerBeds, Fountains } from './EntranceFountain';
 import { RubberSurfaces } from './RubberSurface';
 import { Fences } from './Fences';
+import { Hedges } from './Hedges';
 import { PlaygroundEquipment } from './PlaygroundEquipment';
 import { Decor } from './Decor';
 import { Walker, type WalkInput, type WalkPose } from './Walker';
@@ -492,6 +493,7 @@ export const ParkScene = forwardRef<MapApi, ParkSceneProps>(function ParkScene(p
       <FlowerBeds data={data} pal={pal} />
       <RubberSurfaces data={data} pal={pal} />
       <Fences data={data} pal={pal} />
+      <Hedges pal={pal} />
       <PlaygroundEquipment />
       <Decor pal={pal} lamps={data.lamps} night={theme === 'dark'} lampsLit={lampsLit} />
       <Fountains data={data} />

@@ -1,12 +1,14 @@
 // 3-shaxs yurish rejimi: parkda kichik odam (personaj) yuradi, kamera uning orqasidan kuzatadi.
 // Boshqaruv: telefonda — joystik (ParkMap → Joystick), kompyuterda — WASD / strelkalar (Shift — yugurish).
 // Ekranni bir barmoq/sichqoncha bilan sudrash — atrofga qarash (kamera personaj atrofida aylanadi), chimdish/g'ildirak — uzoq-yaqin.
-// To'siqlar: park chegarasi, binolar, attraksion maydonchalari, suv (ko'priklar ustidan o'tsa bo'ladi).
+// To'siqlar: park chegarasi, binolar, attraksion maydonchalari, jonli devorlar (buta), suv (ko'priklar ustidan o'tsa bo'ladi).
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame, useThree } from '@react-three/fiber';
 import { applyView, groundAt } from './mapGestures';
 import type { ParkData, Poly } from './types';
+import { HEDGES } from './config';
+import { smoothLine } from './geo';
 import type { XY } from './projection';
 
 /** Joystik holati: x — o'ngga, y — oldinga (−1..1) */
@@ -54,9 +56,13 @@ function useObstacles(data: ParkData) {
       list.some(({ p, b }) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1 && inPoly(x, y, p));
     const onBridge = (x: number, y: number) =>
       data.bridges.some((br) => br.line.some((a, i) => i > 0 && segDist(x, y, br.line[i - 1], a) < br.width / 2));
+    // Jonli devorlar (config/map.ts → HEDGES): o'rta chizig'idan eni/2 masofagacha yurib bo'lmaydi
+    const hedges = HEDGES.map((h) => ({ line: smoothLine(h.line, 3), r: h.width / 2, b: bboxOf(h.line) }));
+    const inHedge = (x: number, y: number) => hedges.some(({ line, r, b }) =>
+      x >= b.x0 - 2 && x <= b.x1 + 2 && y >= b.y0 - 2 && y <= b.y1 + 2 && line.some((a, i) => i > 0 && segDist(x, y, line[i - 1], a) < r));
     /** Park koordinatasidagi nuqta (x, y) yurib bo'lmaydigan joydami */
     const blocked = (x: number, y: number) =>
-      !inPoly(x, y, data.ground) || hit(solid, x, y) || (hit(water, x, y) && !onBridge(x, y));
+      !inPoly(x, y, data.ground) || hit(solid, x, y) || inHedge(x, y) || (hit(water, x, y) && !onBridge(x, y));
     return { blocked };
   }, [data]);
 }
