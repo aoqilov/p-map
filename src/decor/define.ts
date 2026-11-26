@@ -79,4 +79,15 @@ export interface PlanModelDef {
    * ham birga ko'chadi, marshrut ko'chirilgan bino orqali o'tmaydi. Berilmasa — iz plandagi joyida qoladi
    */
   move?: boolean;
+  /**
+   * Plandagi izni (notekis shakl) shu o'lchamdagi bitta to'rtburchakka almashtirish: markazi `at`, old tomoni `bearing`,
+   * width — old tomon bo'ylab, depth — chuqurligi, m. Pin `at` ga ko'chadi, marshrut yangi iz orqali o'tmaydi
+   */
+  rect?: { width: number; depth: number };
+  /** Bino balandligi, m (plandagidan baland model uchun: bosish qutisi model bo'yi bo'ladi). Berilmasa — plandagi */
+  height?: number;
+  /** Bino nomi (plandagi "Bino" o'rniga) — tanlanganda va qidiruvda ko'rinadi */
+  name?: string;
+  /** Xarita bo'limi — berilsa, bino ustida pin chiqadi (qidiruvda ham). Nomsiz pin chiqmaydi */
+  category?: Category;
 }

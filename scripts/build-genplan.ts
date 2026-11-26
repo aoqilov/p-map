@@ -299,7 +299,16 @@ for (const m of planModels) {
   const b = buildings.find((x) => x.id === m.plan);
   if (!b) { console.warn(`⚠ Model: plandagi "${m.plan}" bino topilmadi`); continue; }
   b.model = true;
-  if (m.move) {
+  if (m.height) b.height = m.height;
+  if (m.name) b.name = m.name;
+  if (m.category && b.name !== 'Bino' && !pending.some((pe) => pe.id === m.plan))
+    pending.push({ props: { layer: 'building', name: b.name, category: m.category }, id: m.plan, anchor: m.at, elevation: b.height });
+  if (m.rect) {
+    // plandagi notekis iz o'rniga bitta to'rtburchak (model izi); pin uning markaziga
+    b.poly = rectAround(m.at, m.bearing, m.rect.width, m.rect.depth);
+    for (const pe of pending) if (pe.id === m.plan) { pe.anchor = m.at; pe.elevation = b.height; }
+    movedPolys.push(b.poly);
+  } else if (m.move) {
     // izni model joyiga surish (shakli va burilishi o'zgarmaydi); pin ham shuncha siljiydi
     const c = ringCenter(b.poly[0]);
     const dx = m.at[0] - c[0], dy = m.at[1] - c[1];
