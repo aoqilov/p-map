@@ -12,7 +12,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as turf from '@turf/turf';
 import type { Feature, FeatureCollection, Geometry, MultiPolygon, Point, Polygon, Position, LineString } from 'geojson';
-import { ATTRACTION_SIZES, FENCES, HEDGES, KASSA, TREE_GROVES, WATER_RIDES, type AttractionSize, type Category } from '../src/map/config';
+import { ATTRACTION_MOVES, ATTRACTION_SIZES, BUILDING_OVERRIDES, EXTRA_BUILDINGS, FENCES, HEDGES, KASSA, PAVED_AREAS, REMOVED_ATTRACTIONS, REMOVED_BUILDINGS, TREE_GROVES, WATER_RIDES, type AttractionSize, type Category } from '../src/map/config';
 import { project, unproject, type XY } from '../src/map/projection';
 import type { Area, Attraction, Bridge, Building, MultiPoly, ParkData, Poi, Poly } from '../src/map/types';
 import { distToBoundary, distToPoly, inPoly, segmentsCross, smoothLine } from '../src/map/geo';
@@ -242,6 +242,7 @@ fc.features.forEach((f, i) => {
   const polys = polysOf(f);
   const poly = polys.sort((a, b) => area(b) - area(a))[0];
   if (!['building', 'parking', 'playground', 'attraction', 'fountain', 'entrance'].includes(p.layer)) return;
+  if (p.layer === 'attraction' && p.num && REMOVED_ATTRACTIONS.includes(p.num)) return; // config/map.ts → REMOVED_ATTRACTIONS
   const at: XY = f.geometry.type === 'Point' ? P((f.geometry as Point).coordinates) : anchorOf(poly);
   switch (p.layer) {
     case 'building': {
@@ -317,6 +318,12 @@ for (const m of planModels) {
     movedPolys.push(b.poly);
   }
 }
+// #editor dagi oddiy binolar (config/map.ts → BUILDING_OVERRIDES, EXTRA_BUILDINGS): izlar shu yerda hisoblanadi (marshrut ular
+// orqali o'tmaydi), binolar ro'yxatiga esa daraxtlardan keyin qo'shiladi — boshqa daraxtlar joyidan siljimasin
+const overridePolys = new Map(Object.entries(BUILDING_OVERRIDES).map(([id, r]) => [id, rectAround(r.at, r.bearing, r.width, r.depth)]));
+const extraBuildings: Building[] = EXTRA_BUILDINGS.map((e) => ({ id: e.id, name: e.name, poly: rectAround(e.at, e.bearing, e.width, e.depth), height: e.height }));
+for (const id of overridePolys.keys()) if (!buildings.some((b) => b.id === id)) console.warn(`⚠ BUILDING_OVERRIDES: plandagi "${id}" bino topilmadi`);
+movedPolys.push(...overridePolys.values(), ...extraBuildings.map((b) => b.poly));
 if (planModels.length) console.log(`✓ Plan binolariga model: ${planModels.map((m) => m.plan).join(', ')}`);
 if (extraDefs.length) console.log(`✓ Bezak-binolar: ${extraDefs.map((d) => d.name).join(', ')}`);
 
@@ -496,6 +503,81 @@ for (const grove of TREE_GROVES) {
   if (before !== trees.length) console.log(`✓ Attraksion maydonchalaridan ${before - trees.length} ta daraxt olib tashlandi`);
 }
 
+// ---------- Qo'shimcha plitka (config/map.ts → PAVED_AREAS): daraxtlardan keyin — boshqa daraxtlar siljimasin ----------
+let roadsOut = roads;
+if (PAVED_AREAS.length) {
+  // 0.4 m kengaytiriladi: chizilgan chegara mavjud plitkaga sal yetmasa ham, orada ingichka maysa bo'lagi qolmasin
+  const pavedF: PolyFeature[] = PAVED_AREAS.map((a) =>
+    (turf.buffer(turf.polygon([[...a.poly, a.poly[0]].map(unproject)]), 0.4, { units: 'meters', steps: 2 }) as PolyFeature));
+  // bezak-binolar izi (cutPaving, masalan sharshara) qo'shimcha plitka ustida ham kesilgan bo'lsin
+  roadsOut = toMulti(minus(unionAll([...(roadsF ? [roadsF] : []), ...pavedF]), unionAll(cutF)));
+  // plitka ichida qolgan mayda maysa teshiklari (4 m² dan kichik) — yopiladi
+  roadsOut = roadsOut.map((poly) => [poly[0], ...poly.slice(1).filter((hole) => area([hole]) >= 4)]);
+  const paved = PAVED_AREAS.map((a) => { const poly: Poly = [[...a.poly, a.poly[0]]]; return { poly, box: bbox(poly) }; });
+  const before = trees.length;
+  for (let i = trees.length - 1; i >= 0; i--) {
+    const p: XY = [trees[i][0], trees[i][1]];
+    if (paved.some((k) => p[0] > k.box.minX - 1 && p[0] < k.box.maxX + 1 && p[1] > k.box.minY - 1 && p[1] < k.box.maxY + 1 &&
+      (inPoly(p, k.poly) || distToPoly(p, k.poly) < 1))) trees.splice(i, 1);
+  }
+  console.log(`✓ Qo'shimcha plitka: ${PAVED_AREAS.map((a) => a.id).join(', ')} (${before - trees.length} ta daraxt olib tashlandi)`);
+}
+
+// ---------- #editor dagi oddiy binolar: izni almashtirish va yangilarini qo'shish, ostidagi daraxtlarni olib tashlash ----------
+if (overridePolys.size || extraBuildings.length) {
+  for (const [id, poly] of overridePolys) {
+    const b = buildings.find((x) => x.id === id);
+    if (!b) continue;
+    b.poly = poly;
+    const h = BUILDING_OVERRIDES[id].height;
+    if (h) { b.height = h; for (const po of pois) if (po.id === id) po.elevation = h; } // pin bino tepasida
+  }
+  buildings.push(...extraBuildings);
+  const polys = [...overridePolys.values(), ...extraBuildings.map((b) => b.poly)].map((poly) => ({ poly, box: bbox(poly) }));
+  const before = trees.length;
+  for (let i = trees.length - 1; i >= 0; i--) {
+    const p: XY = [trees[i][0], trees[i][1]];
+    if (polys.some((k) => p[0] > k.box.minX - 1.5 && p[0] < k.box.maxX + 1.5 && p[1] > k.box.minY - 1.5 && p[1] < k.box.maxY + 1.5 &&
+      (inPoly(p, k.poly) || distToPoly(p, k.poly) < 1.5))) trees.splice(i, 1);
+  }
+  console.log(`✓ Oddiy binolar (#editor): ${overridePolys.size} ta o'zgartirildi, ${extraBuildings.length} ta qo'shildi` +
+    (before !== trees.length ? `, ${before - trees.length} ta daraxt olib tashlandi` : ''));
+}
+
+// ---------- Olib tashlangan plan binolari (config/map.ts → REMOVED_BUILDINGS): daraxtlardan keyin — boshqa daraxtlar siljimasin ----------
+if (REMOVED_BUILDINGS.length) {
+  const gone = new Set(REMOVED_BUILDINGS);
+  const isGone = (id: string) => gone.has(id) || [...gone].some((g) => id.startsWith(`${g}-`) && /^-\d+$/.test(id.slice(g.length)));
+  for (const id of gone) if (!buildings.some((b) => b.id === id)) console.warn(`⚠ REMOVED_BUILDINGS: "${id}" topilmadi`);
+  const before = buildings.length;
+  for (let i = buildings.length - 1; i >= 0; i--) if (isGone(buildings[i].id)) buildings.splice(i, 1);
+  for (let i = pois.length - 1; i >= 0; i--) if (isGone(pois[i].id)) pois.splice(i, 1);
+  console.log(`✓ Olib tashlangan binolar: ${REMOVED_BUILDINGS.join(', ')} (${before - buildings.length} ta iz)`);
+}
+
+// ---------- Plandagi attraksionlarni surish (config/map.ts → ATTRACTION_MOVES): daraxtlardan keyin — boshqa daraxtlar siljimasin ----------
+if (Object.keys(ATTRACTION_MOVES).length) {
+  const moved: Poly[] = [];
+  for (const [num, to] of Object.entries(ATTRACTION_MOVES)) {
+    const a = attractions.find((x) => x.num === num);
+    if (!a) { console.warn(`⚠ ATTRACTION_MOVES: №${num} attraksion topilmadi`); continue; }
+    if (a.ride) { console.warn(`⚠ ATTRACTION_MOVES: №${num} — suv attraksioni, surilmaydi`); continue; }
+    const dx = to[0] - a.at[0], dy = to[1] - a.at[1];
+    a.at = [r2(to[0]), r2(to[1])];
+    if (a.footprint) { a.footprint = a.footprint.map((ring) => ring.map(([x, y]): XY => [r2(x + dx), r2(y + dy)])); moved.push(a.footprint); }
+    for (const po of pois) if (po.id === a.id) { po.anchor = [r2(po.anchor[0] + dx), r2(po.anchor[1] + dy)]; po.node = nearestNode(po.anchor); }
+  }
+  const polys = moved.map((poly) => ({ poly, box: bbox(poly) }));
+  const before = trees.length;
+  for (let i = trees.length - 1; i >= 0; i--) {
+    const p: XY = [trees[i][0], trees[i][1]];
+    if (polys.some((k) => p[0] > k.box.minX - 1 && p[0] < k.box.maxX + 1 && p[1] > k.box.minY - 1 && p[1] < k.box.maxY + 1 &&
+      (inPoly(p, k.poly) || distToPoly(p, k.poly) < 1))) trees.splice(i, 1);
+  }
+  console.log(`✓ Surilgan attraksionlar: ${Object.keys(ATTRACTION_MOVES).map((n) => `№${n}`).join(', ')}` +
+    (before !== trees.length ? ` (${before - trees.length} ta daraxt olib tashlandi)` : ''));
+}
+
 // ---------- Fonuslar: markaz chiziqlari bo'ylab har ~30 m, yo'l chetiga (maysa tomonga) ----------
 const LAMP_EVERY = 30;
 const lamps: [number, number][] = [];
@@ -599,7 +681,7 @@ const data: ParkData = {
   ground,
   groundCut,
   water: waterAreas,
-  roads,
+  roads: roadsOut,
   bridges,
   parking,
   playgrounds,

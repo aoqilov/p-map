@@ -15,7 +15,7 @@ Ishga tushirish (loyiha ildizidan):
     blender -b --factory-startup -P src/attractions/rc-park/model.py [-- <preview_papka>]
 Natija shu papkada: model.blend, model.glb, track.json, preview.png, preview_roof.png, preview_front.png, preview_top.png
 
-Old tomoni (bino, yo'l) — Blender'da -Y. Markaz — maydoncha o'rtasi. Asl o'lcham: 32.4 × 24.7 m, balandligi ~8.8 m (tomdagi pult antennasi).
+Old tomoni (bino, yo'l) — Blender'da -Y. Markaz — maydoncha o'rtasi. Asl o'lcham: 32.4 × 19.4 m (orqa qismi BACK_CUT ga qisqartirilgan), balandligi ~8.8 m (tomdagi pult antennasi).
 """
 import json
 import math
@@ -46,6 +46,10 @@ rnd = random.Random(7)
 p = []
 
 HX, HY = 16.2, 12.35        # maydon yarim o'lchami
+# Orqa tomon (+Y, cho'l va o'rmon zonalari) qisqartirilgan: #editor da maydoncha chuqurligi 24.8 → 19.5 m (old qirra joyida).
+# Model avval to'liq (HY) quriladi, oxirida SPLIT dan orqadagilar BACK_CUT ga siqiladi va markaz izga suriladi (pastda).
+BACK_CUT = 5.3
+SPLIT = 1.6                 # rally zonasi orqa chegarasi — undan oldingi qism (bino, trek) o'zgarmaydi
 Z = 0.16                    # yer usti (maydoncha ostidagi plitka 0.1 m dan baland)
 
 
@@ -334,6 +338,35 @@ for i, c in enumerate(cars):
     a, b = track[j], track[(j + 1) % N]
     c.location = (a[0], a[1], tz[j] + 0.02)
     c.rotation_euler = (0, 0, math.atan2(b[1] - a[1], b[0] - a[0]))
+# ---------- orqa qismni siqish va markazni izga surish ----------
+HB = HY - BACK_CUT                                                   # yangi orqa chegara
+KB = (HB - SPLIT) / (HY - SPLIT)
+SHIFT = (HY - HB) / 2                                                # [-HY, HB] o'rtasi → 0
+
+
+def remap(y):
+    return y if y <= SPLIT else SPLIT + (y - SPLIT) * KB
+
+
+from mathutils import Matrix  # noqa: E402
+
+for ob in p:
+    ys = [(ob.matrix_world @ v.co).y for v in ob.data.vertices]
+    if max(ys) - min(ys) > 3.0 and max(ys) > SPLIT:
+        # katta yuza (zamin, zona, panjara, so'qmoq) — tepalari bo'yicha cho'ziladi
+        ob.data.transform(ob.matrix_world)
+        ob.matrix_world = Matrix.Identity(4)
+        for v in ob.data.vertices:
+            v.co.y = remap(v.co.y)
+    else:
+        # mayda narsa (archa, qoya, kaktus, mashina) — shakli saqlanadi, faqat ko'chadi
+        cy = (max(ys) + min(ys)) / 2
+        ob.location.y += remap(cy) - cy
+    ob.location.y += SHIFT
+for c in cars:
+    c.location.y += SHIFT
+track = [(x, y + SHIFT) for x, y in track]
+
 (HERE / 'track.json').write_text(json.dumps({
     'closed': True,
     'points': [[round(x, 3), round(zz + 0.02, 3), round(-y, 3)] for (x, y), zz in zip(track, tz)],

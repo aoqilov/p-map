@@ -12,14 +12,14 @@ const W = 4.0, D = 3.6, H = 5.65;
 const FOOTPRINT: Record<string, [number, number]> = {
   'n69-1': [3.23, 3.32],
   'n69-2': [3.25, 3.33],
-  'n67': [3.2, 4.48],
 };
 
 // Planda ikki marta chizilgan bino (bir joyda) — model bitta
 const unique = places.filter((p, i) => places.findIndex((q) => q.at[0] === p.at[0] && q.at[1] === p.at[1]) === i);
 
 export default defineDecor(unique.map((pl) => {
-  const [fw, fd] = FOOTPRINT[pl.plan];
+  // izi to'rtburchak qilib berilgan bo'lsa (#editor) — shu o'lcham, bo'lmasa — plandagi
+  const [fw, fd] = 'rect' in pl && pl.rect ? [pl.rect.width, pl.rect.depth] : FOOTPRINT[pl.plan];
   const s = Math.min(fw / W, fd / D);
   return {
     name: `Kafe uychasi ${pl.plan}`,

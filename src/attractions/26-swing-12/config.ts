@@ -10,7 +10,8 @@ export default defineAttraction({
   name: 'Swing 12',
   model: { url: modelUrl, natural: { width: 6.0, height: 4.7 } },
   /** Kirish (panjaradagi ochiq joy) — janub */
-  bearing: 180,
+  /** #editor da tanlangan (oldin 180) */
+  bearing: 251,
   anim: {
     /** Toj va o'rindiqlar aylanishi, bir aylanish soniyada (0 — to'xtagan) */
     secondsPerTurn: 7,

@@ -10,12 +10,12 @@ export default {
    * Markazi — park koordinatasi, metr: Koleso obozreniya (47) g'arbidagi katta maysazorning shimoli-g'arbiy burchagi
    * (foydalanuvchi chizgan bino va ochiq zona; shimolda yo'l, g'arbda park chetidagi yo'l — ikkalasidan ~1 m ichkarida)
    */
-  at: [-86.84, -16.26],
+  at: [-87.92, -13.84],
   /** Old tomoni (bino, kirish) — shimoliy yo'lga (yo'lga parallel) */
   bearing: 336,
-  /** Maydoncha: eni (yo'l bo'ylab) × chuqurligi, metr */
+  /** Maydoncha: eni (yo'l bo'ylab) × chuqurligi, metr (#editor da orqa qirrasi 5.3 m ichkariga tortilgan — model ham qisqartirilgan) */
   width: 32.5,
-  depth: 24.8,
+  depth: 19.5,
   /** Eng baland joyi (bino tomidagi pult antennasi), metr */
   height: 8.8,
 } satisfies AttractionPlaceDef;

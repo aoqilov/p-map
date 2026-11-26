@@ -15,7 +15,8 @@ export default defineAttraction({
    * Nisbatni saqlang (height = width × 8.7 / 9.3), aks holda model cho'ziladi. Asl o'lchami uchun — shu qatorni o'chiring
    */
   size: { width: 11.0, height: 10.3 },
-  bearing: 180,
+  /** #editor da tanlangan (oldin 180) */
+  bearing: 87,
   anim: {
     /** Soyabon va savatlar aylanishi, bir aylanish soniyada (0 — to'xtagan) */
     secondsPerTurn: 7,

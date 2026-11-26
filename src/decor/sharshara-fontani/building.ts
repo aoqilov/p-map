@@ -5,7 +5,8 @@ import type { BuildingDef } from "../define";
 export default {
   id: "sharshara-fontani",
   name: "Fontan",
-  at: [-78.4, 119.1],
+  /** Markazi — 2D setka tahrirlagichda tanlangan */
+  at: [-79.5, 119.5],
   /** Model koordinatasi park bilan bir xil (+X — sharq, +Y — shimol) bo'lishi uchun 180 */
   bearing: 180,
   /** Havza diametri, metr (doira iz) */

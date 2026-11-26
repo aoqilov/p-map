@@ -7,7 +7,8 @@ export default defineAttraction({
   name: 'Jump Around',
   model: { url: modelUrl, natural: { width: 9.2, height: 7.6 } },
   /** Kirish (panjaradagi ochiq joy) — janub. Aylana maydonchada yo'nalish muhim emas */
-  bearing: 180,
+  /** #editor da tanlangan (oldin 180) */
+  bearing: 349,
   anim: {
     /** Bir aylanish necha soniyada (0 — aylanmaydi) */
     secondsPerTurn: 9,

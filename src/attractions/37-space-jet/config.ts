@@ -7,7 +7,8 @@ export default defineAttraction({
   name: 'Space Jet',
   model: { url: modelUrl, natural: { width:10.0, height: 8.5 } },
   /** Kirish (panjaradagi ochiq joy) — janub. Aylana maydonchada yo'nalish muhim emas */
-  bearing: 180,
+  /** #editor da tanlangan (oldin 180) */
+  bearing: 127,
   anim: {
     /** Bir aylanish necha soniyada (0 — aylanmaydi) */
     secondsPerTurn: 10,

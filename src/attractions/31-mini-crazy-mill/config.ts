@@ -10,7 +10,8 @@ export default defineAttraction({
   name: 'Mini Crazy Mill',
   model: { url: modelUrl, natural: { width: 5.5, height: 4.4 } },
   /** Kirish (panjaradagi ochiq joy) va kulgili yuz — g'arbga, yo'l tomonga */
-  bearing: 270,
+  /** #editor da tanlangan (oldin 270) */
+  bearing: 254,
   anim: {
     /** Disk va transportlar markaziy tegirmon atrofida aylanadi, soniya (0 — to'xtagan) */
     secondsPerTurn: 10,

@@ -14,11 +14,11 @@ export default defineAttraction({
   planName: place.name,
   name: place.name,
   /**
-   * width — bu yerda ataylab maydonchaning qisqa tomoni (24.8 m): xarita attraksion atrofidagi daraxtlarni shu diametrli doira
+   * width — bu yerda ataylab maydonchaning qisqa tomoni (19.5 m): xarita attraksion atrofidagi daraxtlarni shu diametrli doira
    * bo'yicha o'chiradi, uzun tomon (32.5 m) olinsa maysazordagi qo'shni daraxtlar ham ketardi. Maydoncha ichidagilarni
    * build:genplan o'zi olib tashlaydi. Model masshtablanmaydi (size yo'q)
    */
-  model: { url: modelUrl, natural: { width: 24.8, height: 8.8 } },
+  model: { url: modelUrl, natural: { width: 19.5, height: 8.8 } },
   /** Bino va kirish — shimoliy yo'lga (place.ts) */
   bearing: place.bearing,
   anim: {

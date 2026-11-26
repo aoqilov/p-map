@@ -9,6 +9,6 @@ export default [
   { plan: 'n69-1-2', at: [-8.09, 62.23], bearing: 225.2, move: true },
   /** n69-2 */
   { plan: 'n69-2', at: [11.39, 43.16], bearing: 224.6, move: true },
-  /** n67 — boshqalardan janubda, alohida: joyida qoladi, faqat burilgan */
-  { plan: 'n67', at: [7.65, 23.89], bearing: 65.7 },
+  /** n67 — boshqalardan janubda, alohida: #editor da ko'chirilgan, burilgan va kengaytirilgan (iz — to'rtburchak) */
+  { plan: 'n67', at: [7.9, 23.73], bearing: 336, rect: { width: 4.5, depth: 3 } },
 ] satisfies PlanModelDef[];

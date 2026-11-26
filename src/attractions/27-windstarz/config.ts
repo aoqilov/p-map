@@ -7,7 +7,8 @@ export default defineAttraction({
   name: "Windstar",
   model: { url: modelUrl, natural: { width: 16.8, height: 9.6 } },
   /** Kirish (panjaradagi ochiq joy) — janub. Aylana maydonchada yo'nalish muhim emas */
-  bearing: 110,
+  /** Burilish — #editor da tanlangan (asli 110) */
+  bearing: 38,
   size: { height: 15.6, width: 22.8 },
   anim: {
     /** Bir aylanish necha soniyada (0 — aylanmaydi) */

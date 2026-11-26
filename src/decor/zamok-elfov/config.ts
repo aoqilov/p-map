@@ -10,7 +10,7 @@ export default defineDecor({
   name: 'Кафе "Замок эльфов"',
   at: place.at,
   bearing: place.bearing,
-  /** Asl o'lcham: 22 × 14 m (eng keng joyi — diagonal emas, X bo'yicha 22 m), balandligi 7.04 m */
-  model: { url: modelUrl, natural: { width: 22, height: 7.04 } },
+  /** Asl o'lcham: 19 × 10 m (izga aynan teng), balandligi 7.04 m */
+  model: { url: modelUrl, natural: { width: 19, height: 7.04 } },
   clearRadius: 0,
 });

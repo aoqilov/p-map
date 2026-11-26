@@ -10,7 +10,8 @@ export default defineAttraction({
   name: 'Happy Swing',
   model: { url: modelUrl, natural: { width: 4.8, height: 6.2 } },
   /** Old tomoni (o'rindiqlar qaragan) — janub; arg'imchoq shimol–janub bo'ylab tebranadi */
-  bearing: 180,
+  /** #editor da tanlangan (oldin 180) */
+  bearing: 232,
   anim: {
     /**
      * Arg'imchoq: eng katta og'ish (gradus), bir tebranish (oldinga-orqaga) necha soniya, seans necha soniya.

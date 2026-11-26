@@ -6,8 +6,8 @@ import type { AttractionPlaceDef } from '../define';
 export default {
   /** Xaritadagi nomi — config.ts dagi planName bilan bir xil */
   name: 'Ping pong',
-  /** To'rtala stolning o'rtasi — park koordinatasi, metr (pritsel: -40.2, 166.9) */
-  at: [-40.2, 166.9],
+  /** To'rtala stolning o'rtasi — park koordinatasi, metr (2D setka tahrirlagichda tanlangan) */
+  at: [-40.5, 171.5],
   /** Stollarning uzun tomoni qaragan yo'nalish, gradus (140 — janubi-sharq). Qator unga perpendikulyar: shimoli-sharq – janubi-g'arb */
   bearing: 140,
   /** Maydoncha: qator bo'ylab eni (4 stol: 3 × 5 m + 1.84 m + chetlari) va stol uzun tomoni bo'ylab chuqurligi, metr */

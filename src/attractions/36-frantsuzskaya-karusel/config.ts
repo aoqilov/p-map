@@ -15,7 +15,8 @@ export default defineAttraction({
    */
   size: { width: 23.0, height: 12.8 },
   /** Zinapoya (panjaradagi ochiq joy) — janub */
-  bearing: 180,
+  /** #editor da tanlangan (oldin 180) */
+  bearing: 314,
   anim: {
     /** Karusel bir aylanishi necha soniyada (0 — aylanmaydi). Soat strelkasiga teskari */
     secondsPerTurn: 16,

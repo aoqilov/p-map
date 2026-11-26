@@ -7,7 +7,8 @@ export default defineAttraction({
   name: 'Magic Bikes',
   model: { url: modelUrl, natural: { width: 9.0, height: 8.2 } },
   /** Old tomoni (kirish, yozuvlar) — shimol. Aylana maydonchada yo'nalish muhim emas */
-  bearing: 0,
+  /** #editor da tanlangan (oldin 0) */
+  bearing: 179,
   anim: {
     /** Bir aylanish necha soniyada (0 — aylanmaydi) */
     secondsPerTurn: 12,

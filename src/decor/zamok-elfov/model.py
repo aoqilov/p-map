@@ -8,7 +8,7 @@ Izi — building.ts dagi rect (W × D), model shu o'lchamga aynan to'g'ri keladi
 
 Ishga tushirish (loyiha ildizidan):
     blender -b --factory-startup -P src/decor/zamok-elfov/model.py [-- <preview_papka>]
-Natija shu papkada: model.blend, model.glb, preview.png, preview_side.png, preview_top.png
+Natija shu papkada: model.blend, model.glb, preview.png, preview_side.png
 """
 import math
 import sys
@@ -34,12 +34,14 @@ _b.inputs['Emission Strength'].default_value = 0.25
 p = []
 
 # ---------- o'lchamlar, m ----------
-W, D = 22.0, 14.0           # umumiy iz (soyabon chetigacha) — building.ts dagi rect
-GW, GD = 19.0, 11.0         # shisha quti
+W, D = 19.0, 10.0           # umumiy iz (soyabon chetigacha) — building.ts dagi rect
+OV = 1.2                    # soyabon chiqishi (shisha devordan chetgacha)
+GW, GD = W - 2 * OV, D - 2 * OV   # shisha quti
+SX, SY = GW / 19.0, GD / 11.0     # banner bezaklari asl (19 × 11 m) chizmadan shu nisbatda
 GH = 4.0                    # shisha devor balandligi
 CZ = 4.15                   # soyabon sathi
-BX0, BX1 = -9.0, 9.2        # beton quti (X)
-BY0, BY1 = -2.6, 5.5        # beton quti (Y): oldidan ~2.9 m orqaga surilgan
+BX0, BX1 = -GW / 2 + 0.5, GW / 2 - 0.3   # beton quti (X)
+BY0, BY1 = -GD / 2 + 1.9, GD / 2        # beton quti (Y): oldidan ~1.9 m orqaga surilgan
 BH = 6.9                    # beton quti tepasi
 gx, gy = GW / 2, GD / 2
 cx, cy = W / 2, D / 2
@@ -48,8 +50,8 @@ cx, cy = W / 2, D / 2
 p.append(k.box((W, D, 0.12), (0, 0, 0.06), 'paving'))
 p.append(k.box((GW - 0.3, GD - 0.3, GH - 0.1), (0, 0, 0.12 + (GH - 0.1) / 2), 'interior'))   # ichi qorong'i
 # ichkaridagi "qoya" bezaklari (fotoda shisha ortida ko'rinadi)
-for x, y, r in ((3.5, -gy + 1.4, 1.1), (6.8, -gy + 1.2, 0.8), (-4.0, -gy + 1.3, 0.9)):
-    p.append(k.ball(r, (x, y - 0.25, 0.12 + r * 0.7), 'rock', sub=1, scale=(1.3, 0.9, 1.0)))
+for x, y, r in ((3.5 * SX, -gy + 1.4, 1.1), (6.8 * SX, -gy + 1.2, 0.8), (-4.0 * SX, -gy + 1.3, 0.9)):
+    p.append(k.ball(r * SY, (x, y - 0.25, 0.12 + r * 0.7), 'rock', sub=1, scale=(1.3, 0.9, 1.0)))
 
 # ---------- shisha devorlar va ramkalar ----------
 T = 0.04
@@ -82,7 +84,7 @@ p.append(k.box((GW + 0.2, GD + 0.2, 0.25), (0, 0, GH + 0.12 + 0.12), 'concrete_d
 p.append(k.box((BX1 - BX0, BY1 - BY0, BH - CZ), ((BX0 + BX1) / 2, (BY0 + BY1) / 2, (CZ + BH) / 2), 'concrete'))
 p.append(k.box((BX1 - BX0 + 0.16, BY1 - BY0 + 0.16, 0.14), ((BX0 + BX1) / 2, (BY0 + BY1) / 2, BH + 0.07), 'cap'))
 # old yuzidagi panel choklari (beton plitalar)
-for x in (-6.0, -2.4, 1.2, 4.8):
+for x in (BX0 + (BX1 - BX0) * t for t in (0.2, 0.4, 0.6, 0.8)):
     p.append(k.box((0.06, 0.04, BH - CZ - 0.3), (x, BY0 - 0.01, (CZ + BH) / 2), 'concrete_d'))
 # chap uchidagi tik qovurg'a (fotoda beton qutining chap burchagi)
 p.append(k.box((0.35, 0.35, BH - CZ), (BX0 + 0.1, BY0 - 0.1, (CZ + BH) / 2), 'concrete_d'))
@@ -169,20 +171,21 @@ for x0, x1, z0, z1, m in ((-8.6, -5.6, 0.6, 1.25, 'blue'),      # "Соверш�
                           (-0.4, 1.6, 0.65, 1.9, 'blue'),       # avto
                           (2.6, 5.8, 0.85, 1.75, 'blue'),        # "Авиабилеты"
                           (-5.3, -2.8, 0.55, 1.95, 'blue_d')):   # bolalar surati
+    x0, x1 = x0 * SX, x1 * SX
     p.append(k.box((x1 - x0, 0.03, z1 - z0), ((x0 + x1) / 2, fy, (z0 + z1) / 2), m))
-p.append(k.text('Inson Uchun', 0.26, (-7.1, fy - 0.01, 1.62), 'blue_d'))
-p.append(k.text('click', 0.34, (-1.8, fy - 0.01, 0.85), 'blue_d'))
-p.append(k.text('click', 0.3, (7.2, fy - 0.01, 0.65), 'blue_d'))
-p.append(k.text('Мое авто', 0.24, (-1.9, fy - 0.01, 1.55), 'black'))
+TS = min(1.0, SX)
+p.append(k.text('Inson Uchun', 0.26 * TS, (-7.1 * SX, fy - 0.01, 1.62), 'blue_d'))
+p.append(k.text('click', 0.34 * TS, (-1.8 * SX, fy - 0.01, 0.85), 'blue_d'))
+p.append(k.text('click', 0.3 * TS, (7.2 * SX, fy - 0.01, 0.65), 'blue_d'))
+p.append(k.text('Мое авто', 0.24 * TS, (-1.9 * SX, fy - 0.01, 1.55), 'black'))
 # chap banner yuzida ham ko'k bloklar
-for y0, y1 in ((-3.5, -0.5), (1.5, 4.5)):
+for y0, y1 in ((-3.5 * SY, -0.5 * SY), (1.5 * SY, 4.5 * SY)):
     p.append(k.box((0.03, y1 - y0, 0.9), (bx - 0.03, (y0 + y1) / 2, 1.2), 'blue'))
 
 # o't o'chirgich (o'ng burchakda, qizil)
 p.append(k.box((0.5, 0.35, 0.9), (gx + 0.7, -gy - 0.4, 0.57), 'red'))
 
 k.finish('zamok-elfov', p, HERE, [
-    ('preview.png', (-14, -26, 9), (0, 0, 3)),
-    ('preview_side.png', (24, -10, 6), (0, 0, 3)),
-    ('preview_top.png', (-6, -18, 30), (0, 0, 2)),
+    ('preview.png', (-11, -19, 8), (0, 0, 3)),
+    ('preview_side.png', (18, -8, 5), (0, 0, 3)),
 ])
