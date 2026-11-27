@@ -8,6 +8,8 @@ export default defineAttraction({
   model: { url: modelUrl, natural: { width: 9.7, height: 6.0 } },
   /** Xaritadagi o'lchami, metr. Asl: 9.7 × 6.0 — nisbatni saqlasangiz, shakli buzilmaydi */
   size: { width: 15.7, height: 16.0 },
+  /** Model qaragan yo'nalish, gradus (#editor) */
+  bearing: 54,
   anim: {
     /** Bir aylanish necha soniyada (0 — aylanmaydi). Haqiqiy attraksion ~8–10 s */
     secondsPerTurn: 9,

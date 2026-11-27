@@ -14,8 +14,8 @@ export default defineAttraction({
    * Nisbatni saqlang (height = width × 23.85 / 8.74), aks holda model cho'ziladi. Asl o'lchami uchun — shu qatorni o'chiring
    */
   size: { width: 19.0, height: 34.56 },
-  /** Zina (panjaradagi ochiq joy) — janub tomonda */
-  bearing: 180,
+  /** Zina (panjaradagi ochiq joy) — shimoli-g'arb tomonda (#editor) */
+  bearing: 321,
   anim: {
     /**
      * O'rindiqli halqa minora bo'ylab ko'tariladi: necha metr, sikl soniya (pastda turish → ko'tarilish → tepada →

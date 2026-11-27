@@ -321,7 +321,7 @@ for (const m of planModels) {
 // #editor dagi oddiy binolar (config/map.ts → BUILDING_OVERRIDES, EXTRA_BUILDINGS): izlar shu yerda hisoblanadi (marshrut ular
 // orqali o'tmaydi), binolar ro'yxatiga esa daraxtlardan keyin qo'shiladi — boshqa daraxtlar joyidan siljimasin
 const overridePolys = new Map(Object.entries(BUILDING_OVERRIDES).map(([id, r]) => [id, rectAround(r.at, r.bearing, r.width, r.depth)]));
-const extraBuildings: Building[] = EXTRA_BUILDINGS.map((e) => ({ id: e.id, name: e.name, poly: rectAround(e.at, e.bearing, e.width, e.depth), height: e.height }));
+const extraBuildings: Building[] = EXTRA_BUILDINGS.map((e) => ({ id: e.id, name: e.name, poly: 'poly' in e ? [[...e.poly, e.poly[0]]] : rectAround(e.at, e.bearing, e.width, e.depth), height: e.height }));
 for (const id of overridePolys.keys()) if (!buildings.some((b) => b.id === id)) console.warn(`⚠ BUILDING_OVERRIDES: plandagi "${id}" bino topilmadi`);
 movedPolys.push(...overridePolys.values(), ...extraBuildings.map((b) => b.poly));
 if (planModels.length) console.log(`✓ Plan binolariga model: ${planModels.map((m) => m.plan).join(', ')}`);
@@ -424,12 +424,12 @@ for (const { props, id, anchor, elevation } of pending) {
   pois.push({ id, name: props.name, label: labelOf(props), category: props.category, anchor, elevation, node: nearestNode(anchor), num: props.num ?? null });
 }
 
-// Kassalar (config.ts → KASSA): plan raqami yonida (`near`) yoki aniq koordinatada (`lonLat`)
+// Kassalar (config.ts → KASSA): park metrlarida (`at` — 3D budka bilan), aniq koordinatada (`lonLat`) yoki plan raqami yonida (`near`)
 for (const k of KASSA) {
   const base = k.near ? pois.find((p) => p.num === k.near) : null;
-  const anchor: XY | null = k.lonLat ? P(k.lonLat) : base ? [r2(base.anchor[0] + 3), r2(base.anchor[1] - 3)] : null;
+  const anchor: XY | null = k.at ?? (k.lonLat ? P(k.lonLat) : base ? [r2(base.anchor[0] + 3), r2(base.anchor[1] - 3)] : null);
   if (!anchor) { console.warn(`⚠ Kassa "${k.label}": joyi topilmadi (near: ${k.near})`); continue; }
-  pois.push({ id: k.id, name: k.label, label: k.label, category: 'kassa', anchor, elevation: 0.5, node: nearestNode(anchor),
+  pois.push({ id: k.id, name: k.label, label: k.label, category: 'kassa', anchor, elevation: k.at ? r2(2.77 * (k.scale ?? 1) + 4.3) : 0.5, node: nearestNode(anchor),
     hours: k.hours, info: k.info });
 }
 if (KASSA.length) console.log(`✓ Kassalar: ${pois.filter((p) => p.category === 'kassa').length}`);

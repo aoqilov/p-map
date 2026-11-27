@@ -58,6 +58,7 @@
 .ged-map.drawing { cursor: crosshair; }
 .ged-map.drawing .g-item, .ged-map.drawing .g-shape { pointer-events: none; }
 .g-item.attr path:first-child { fill: rgba(236, 72, 153, 0.16); stroke: #db2777; }
+.g-item.kassa path:first-child { fill: rgba(255, 194, 14, 0.55); stroke: #b45309; stroke-width: 2; }
 .g-item.removed path:first-child, .g-item.removed circle, .g-shape.removed { fill: rgba(220, 38, 38, 0.18); stroke: #dc2626; stroke-dasharray: 6 4; }
 .g-shape { fill: rgba(16, 185, 129, 0.16); stroke: #059669; stroke-width: 1.5; cursor: pointer; }
 .g-shape.edited { fill: rgba(245, 158, 11, 0.2); stroke: #d97706; }

@@ -244,10 +244,11 @@ export const BUILDING_OVERRIDES: Record<string, BuildingRect> = {
  * Planda yo'q, modelsiz oddiy binolar (#editor da chizilgan): xaritada oddiy quti, yurishda to'siq, pin yo'q.
  * Model kerak bo'lsa — src/decor/<nom>/ papkaga ko'chiriladi (building.ts + config.ts)
  */
-export const EXTRA_BUILDINGS: (BuildingRect & { id: string; name: string; height: number })[] = [
+export const EXTRA_BUILDINGS: ((BuildingRect | { /** To'rtburchak bo'lmagan iz: ko'pburchak uchlari, park metr */ poly: XY[] }) & { id: string; name: string; height: number })[] = [
   { id: 'yangi-1', name: 'Bino', at: [-33, 64.5], bearing: 43, width: 3.5, depth: 3.5, height: 3.5 },
   { id: 'yangi-2', name: 'Bino', at: [-27, 57.5], bearing: 0, width: 4, depth: 3.5, height: 3.5 },
-  { id: 'yangi-3', name: 'Bino', at: [-19.5, 48.5], bearing: 45, width: 2.5, depth: 3.5, height: 2.5 },
+  // eski yangi-3 ([-19.5, 48.5]) o'rnida endi K-5 kassasi (config/kassa.ts); yangi-3 — K-4 kassasi yonidagi bino
+  { id: 'yangi-3', name: 'Bino', at: [-103.5, 116.5], bearing: 300, width: 5, depth: 3, height: 3.5 },
   { id: 'yangi-4', name: 'Bino', at: [-4.5, 3], bearing: 87, width: 4, depth: 4, height: 3.5 },
   // olib tashlangan "Кафе на 10 мест" (n12) o'rnida
   { id: 'yangi-5', name: 'Bino', at: [13.94, 16.76], bearing: 29, width: 3.5, depth: 7.5, height: 3.5 },
